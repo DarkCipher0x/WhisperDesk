@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Test-only add-on: tries things a sandboxed add-on must NOT be able to do and logs the outcome. Never shipped. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\WhisperDesk.Addons\WhisperDesk.Addons.csproj" Private="false" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

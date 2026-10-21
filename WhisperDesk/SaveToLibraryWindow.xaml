@@ -1,0 +1,123 @@
+﻿<Window x:Class="WhisperDesk.SaveToLibraryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:WhisperDesk"
+        xmlns:svc="clr-namespace:WhisperDesk.Services"
+        Title="Save to library — WhisperDesk" Width="520" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip" Icon="Assets/app.ico"
+        FontFamily="Segoe UI" FontSize="13" Background="{DynamicResource Bg}" Foreground="{DynamicResource Fg}"
+        SourceInitialized="OnSourceInitialized">
+    <Window.CommandBindings>
+        <CommandBinding Command="{x:Static local:Commands.PlayLine}" Executed="OnPlayLine"/>
+        <CommandBinding Command="{x:Static local:Commands.EditLine}" Executed="OnEditLine"/>
+    </Window.CommandBindings>
+    <Grid Margin="20,16,20,16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="480"/>
+            <ColumnDefinition x:Name="ReviewGap" Width="0"/>
+            <ColumnDefinition x:Name="ReviewColumn" Width="0"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Details -->
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button x:Name="DiscardButton" Content="Cancel" IsCancel="True" Click="OnCancel"/>
+                <Button Content="Save to library" Style="{StaticResource PrimaryButton}" Margin="0" IsDefault="True" Click="OnSave"/>
+            </StackPanel>
+            <StackPanel>
+                <TextBlock Style="{StaticResource Label}" Text="TITLE"/>
+                <TextBox x:Name="TitleBox" Padding="6,4"/>
+
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1.4*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Label}" Text="TYPE"/>
+                        <ComboBox x:Name="TypeBox"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Style="{StaticResource Label}" Text="FOLDER"/>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="+ New" MinWidth="0" Margin="6,0,0,0" Padding="9,3" Click="OnNewFolder"/>
+                            <ComboBox x:Name="FolderBox"/>
+                        </DockPanel>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Style="{StaticResource Label}" Text="TAGS (comma separated)" Margin="0,12,0,4"/>
+                <TextBox x:Name="TagsBox" Padding="6,4"/>
+
+                <TextBlock Style="{StaticResource Label}" Text="NOTES" Margin="0,12,0,4"/>
+                <TextBox x:Name="NotesBox" Height="64" TextWrapping="Wrap" AcceptsReturn="True" Padding="6,4" VerticalScrollBarVisibility="Auto"/>
+
+                <StackPanel x:Name="MediaPanel" Margin="0,14,0,0">
+                    <TextBlock Style="{StaticResource Label}" Text="MEDIA"/>
+                    <RadioButton x:Name="LinkMedia" Content="Link to the original file (no extra disk space)" IsChecked="True" Margin="0,2,0,4"/>
+                    <RadioButton x:Name="CopyMedia" Content="Copy the file into the library"/>
+                </StackPanel>
+                <TextBlock x:Name="InfoText" FontSize="11.5" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+
+                <!-- Speakers (only when reviewing) -->
+                <StackPanel x:Name="SpeakersPanel" Visibility="Collapsed" Margin="0,16,0,0">
+                    <TextBlock Style="{StaticResource Label}" Text="SPEAKERS"/>
+                    <ItemsControl x:Name="SpeakerEditor">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="18"/>
+                                        <ColumnDefinition Width="86"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="112"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Ellipse Width="10" Height="10" Fill="{Binding Color}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DefaultLabel}" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="2" IsEditable="True" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                              ItemsSource="{Binding Names, Source={x:Static svc:VoiceLibrary.Shared}}"
+                                              ToolTip="Type a name, or pick someone from your voice library"/>
+                                    <TextBlock Grid.Column="2" Text="Name" IsHitTestVisible="False" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Muted}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Name}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ComboBox Grid.Column="4" ItemsSource="{x:Static svc:Sexes.All}" SelectedItem="{Binding Sex}"/>
+                                    <DockPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Margin="0,4,0,2">
+                                        <CheckBox Content="Remember voice" IsChecked="{Binding Remember}" FontSize="11.5"
+                                                  ToolTip="Add this voice to your voice library so it is recognised next time"/>
+                                        <TextBlock Text="{Binding Recognized}" Foreground="{DynamicResource Accent}" FontSize="11"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding MatchHint}" Foreground="{DynamicResource Muted}" FontSize="11"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Review transcript -->
+        <DockPanel x:Name="ReviewPanel" Grid.Column="2" Visibility="Collapsed">
+            <TextBlock DockPanel.Dock="Top" Style="{StaticResource Label}" Text="REVIEW THE TRANSCRIPT — ▶ plays a line, the dropdown fixes who said it"/>
+            <TextBlock DockPanel.Dock="Bottom" x:Name="ReviewStatus" FontSize="11.5" Foreground="{DynamicResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+            <ListBox x:Name="ReviewList" ItemTemplate="{StaticResource TranscriptLineTemplate}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.ScrollUnit="Pixel"/>
+        </DockPanel>
+    </Grid>
+</Window>

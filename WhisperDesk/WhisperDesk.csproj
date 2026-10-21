@@ -1,0 +1,116 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Windows 10 SDK projection: Windows Share sheet (DataTransferManager). Runs on Windows 10 1809+ and 11. -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+
+    <AssemblyName>WhisperDesk</AssemblyName>
+    <Product>WhisperDesk</Product>
+    <AssemblyTitle>WhisperDesk - local audio/video transcription</AssemblyTitle>
+    <Description>Lightweight GPU-accelerated (Vulkan) audio and video transcription using whisper.cpp.</Description>
+    <Authors>darkcipher0x</Authors>
+    <Company>darkcipher0x</Company>
+    <Copyright>Copyright Â© 2026 darkcipher0x</Copyright>
+    <!-- The ONE place the version is set. The SDK derives AssemblyVersion (1.7.0.0), FileVersion and
+         InformationalVersion from it; the app reads it at run time (AboutWindow.Version), build.ps1 reads it for the
+         MSI/zip names and passes it to the installer, and docs/make_guide.py reads it for the guide. -->
+    <Version>1.8.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Publish: one self-contained folder; no .NET install needed on the target PC -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <!-- Keep local build paths (user name) out of compiled code -->
+    <PathMap>$(MSBuildProjectDirectory)=/_/</PathMap>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Custom entry point (Program.cs): the addon-host argument runs a sandboxed add-on without starting the UI. -->
+    <StartupObject>WhisperDesk.Program</StartupObject>
+
+    <!-- Supply chain: every package version is locked (packages.lock.json, committed); restores fail if the graph changes
+         unexpectedly. NuGet audits direct and transitive packages against the GitHub advisory database on every restore;
+         high and critical advisories fail the build. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\logo.png" />
+  </ItemGroup>
+
+  <!-- The add-on SDK (guide, contract DLL, sample source) is shipped next to the exe, not compiled into it. -->
+  <ItemGroup>
+    <Compile Remove="sdk\**;publish\**;dist\**;tools\**;Packaging\**" />
+    <None Remove="sdk\**;publish\**;dist\**;Packaging\**" />
+    <Content Include="docs\WhisperDesk-User-Admin-Guide.pdf">
+      <Link>WhisperDesk User Guide.pdf</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="LICENSE">
+      <Link>LICENSE.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="sdk\README.md;sdk\WhisperDesk.Addons.dll;sdk\WhisperDesk.Addons.xml;sdk\SampleWordExport\*.cs;sdk\SampleWordExport\*.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.8" />
+    <PackageReference Include="PDFsharp-MigraDoc-WPF" Version="6.2.4" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <!-- Pinned above PDFsharp's 8.0.1, which has GHSA-846f-f764-76mx (high) and GHSA-2fmv-rv2c-59x7 (moderate). -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />
+    <!-- NPU engine: ONNX Runtime + Intel's OpenVINO execution-provider plugin (bundles the OpenVINO runtime; no install
+         needed on the PC). Keep Microsoft.ML.OnnxRuntime on the same major.minor as the onnxruntime.dll that
+         org.k2fsa.sherpa.onnx ships (1.28.x): both land as onnxruntime.dll and only one copy is kept (see below). -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
+    <PackageReference Include="Intel.ML.OnnxRuntime.EP.OpenVINO" Version="1.8.0" />
+  </ItemGroup>
+
+  <!-- Two packages carry onnxruntime.dll (sherpa-onnx and Microsoft.ML.OnnxRuntime). Keep Microsoft's: sherpa-onnx only
+       needs the ONNX Runtime C API, which is backwards compatible, while the NPU plugin needs the stock runtime. -->
+  <Target Name="DropDuplicateOnnxRuntime" AfterTargets="ResolvePackageAssets" BeforeTargets="ResolveAssemblyReferences;_CopyFilesMarkedCopyLocal;ComputeFilesToPublish">
+    <ItemGroup>
+      <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(Filename)%(Extension)' == 'onnxruntime.dll' And $([System.String]::Copy('%(NativeCopyLocalItems.NuGetPackageId)').StartsWith('org.k2fsa.sherpa.onnx'))" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WhisperDesk.Addons\WhisperDesk.Addons.csproj" />
+  </ItemGroup>
+
+  <!-- Only x64 Windows is shipped: drop native whisper libraries for other platforms from the publish folder. -->
+  <Target Name="TrimForeignRuntimes" AfterTargets="Publish">
+    <RemoveDir Directories="$(PublishDir)runtimes\vulkan\linux-x64;$(PublishDir)runtimes\win-arm64;$(PublishDir)runtimes\win-x86;$(PublishDir)runtimes\linux-x64" />
+    <Delete Files="$(PublishDir)WhisperDesk.Addons.pdb;$(PublishDir)WhisperDesk.Addons.xml;$(PublishDir)Microsoft.Web.WebView2.Core.xml;$(PublishDir)Microsoft.Web.WebView2.WinForms.xml;$(PublishDir)Microsoft.Web.WebView2.Wpf.xml" />
+  </Target>
+
+</Project>

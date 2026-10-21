@@ -1,0 +1,35 @@
+# Build output
+bin/
+obj/
+publish/
+dist/
+test-build/
+.vs/
+.idea/
+*.user
+*.suo
+TestResults/
+
+# Generated images (drawn by WhisperDesk\Packaging\make-images.ps1 and make-store-art.ps1)
+WhisperDesk/Packaging/Images/
+WhisperDesk/Packaging/StoreListing/
+
+# Signing material and debug symbols never belong in the repository
+*.pfx
+*.p12
+*.snk
+*.pem
+*.key
+*.pdb
+
+# Recordings, sessions and voice data: never commit real ones
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.wdsession
+*.wdbackup
+voices.json
+
+# Local-only lists (privacy terms and similar)
+*.local.txt

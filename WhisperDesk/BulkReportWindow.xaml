@@ -1,0 +1,130 @@
+<Window x:Class="WhisperDesk.BulkReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Report on recordings — WhisperDesk" Height="760" Width="1060" MinHeight="520" MinWidth="820"
+        WindowStartupLocation="CenterOwner" Icon="Assets/app.ico"
+        FontFamily="Segoe UI" FontSize="13" Background="{DynamicResource Bg}" Foreground="{DynamicResource Fg}"
+        SourceInitialized="OnSourceInitialized">
+    <Window.Resources>
+        <Style x:Key="Section" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,14,0,6"/>
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="22,0,0,6"/>
+        </Style>
+        <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="Margin" Value="0,3,0,2"/>
+        </Style>
+    </Window.Resources>
+    <DockPanel Margin="16,12,16,12">
+        <!-- Bottom bar -->
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="CloseButton" Content="Close" Click="OnClose"/>
+                <Button x:Name="GenerateButton" Content="Generate report…" Style="{StaticResource PrimaryButton}" Margin="0" Click="OnGenerate"/>
+            </StackPanel>
+            <ProgressBar x:Name="Busy" DockPanel.Dock="Right" Width="140" Height="4" IsIndeterminate="True" Visibility="Collapsed" Margin="0,0,12,0"/>
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Muted}"/>
+        </DockPanel>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Recordings -->
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Style="{StaticResource Label}" Text="RECORDINGS"/>
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="All" MinWidth="0" Padding="10,3" Click="OnSelectAll"/>
+                    <Button Content="None" MinWidth="0" Padding="10,3" Click="OnSelectNone"/>
+                    <TextBlock x:Name="CountText" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource Muted}"/>
+                </StackPanel>
+                <ListBox x:Name="RecordingsList">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding Included, Mode=TwoWay}" Checked="OnIncludedChanged" Unchecked="OnIncludedChanged">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Meta.Title}" TextTrimming="CharacterEllipsis" MaxWidth="280"/>
+                                    <TextBlock Text="{Binding Info}" FontSize="11" Foreground="{DynamicResource Muted}"/>
+                                </StackPanel>
+                            </CheckBox>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Options -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Style="{StaticResource Section}" Text="Details" Margin="0,0,0,6"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                        <TextBlock Text="Report title" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" x:Name="TitleBox" Margin="0,2" Padding="5,3"/>
+                        <TextBlock Grid.Row="1" Text="Prepared by" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" x:Name="PreparedByBox" Margin="0,2" Padding="5,3"/>
+                        <TextBlock Grid.Row="2" Text="Reference / case no." VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" x:Name="ReferenceBox" Margin="0,2" Padding="5,3"/>
+                        <TextBlock Grid.Row="3" Text="Purpose / notes" VerticalAlignment="Top" Margin="0,5,0,0"/>
+                        <TextBox Grid.Row="3" Grid.Column="1" x:Name="PurposeBox" Margin="0,2" Padding="5,3" Height="52" TextWrapping="Wrap" AcceptsReturn="True"/>
+                    </Grid>
+
+                    <TextBlock Style="{StaticResource Section}" Text="Layout"/>
+                    <RadioButton x:Name="CombinedRadio" GroupName="layout" Content="One combined report covering every recording" IsChecked="True" Margin="0,2"/>
+                    <RadioButton x:Name="SeparateRadio" GroupName="layout" Content="A separate report per recording, plus an index" Margin="0,2"/>
+                    <CheckBox x:Name="ZipBox" Content="Bundle everything into one .zip"/>
+
+                    <TextBlock Style="{StaticResource Section}" Text="Contents"/>
+                    <CheckBox x:Name="OverviewBox" Content="Overview table of the recordings" IsChecked="True"/>
+                    <CheckBox x:Name="SummariesBox" Content="Summary of each recording" IsChecked="True"/>
+                    <CheckBox x:Name="ParticipationBox" Content="Participation across recordings (who spoke, how much, in how many)" IsChecked="True"/>
+                    <CheckBox x:Name="TranscriptsBox" Content="Full transcripts" IsChecked="True"/>
+                    <CheckBox x:Name="EditLogBox" Content="Edit log (every correction: who, when, why, before / after)" IsChecked="True"/>
+                    <CheckBox x:Name="IntegrityBox" Content="Integrity: SHA-256 fingerprints of audio, transcript and metadata" IsChecked="True"/>
+                    <TextBlock Style="{StaticResource Hint}" Text="A manifest with SHA-256 hashes of every generated file is always written next to the report (chain of custody)."/>
+
+                    <TextBlock Style="{StaticResource Section}" Text="Filters"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                        <TextBlock Text="Keyword hits" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" x:Name="KeywordsBox" Margin="0,2" Padding="5,3"
+                                 ToolTip="Comma-separated words or phrases. Every line containing one is listed with recording, time and speaker."/>
+                        <TextBlock Grid.Row="1" Text="Only these speakers" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="SpeakersBox" IsEditable="True" Margin="0,2"
+                                  ToolTip="Comma-separated names: transcripts show only their lines (empty = everyone)"/>
+                    </Grid>
+
+                    <TextBlock Style="{StaticResource Section}" Text="Local AI (Ollama)"/>
+                    <TextBlock x:Name="AiState" Style="{StaticResource Hint}" Margin="0,0,0,6"/>
+                    <CheckBox x:Name="AiOverallBox" Content="Write a consolidated report across all recordings (timeline, themes, commitments, inconsistencies)"/>
+                    <CheckBox x:Name="AiPerRecordingBox" Content="Use the local AI for each recording's summary too (slower)"/>
+                    <DockPanel Margin="0,6,0,2">
+                        <Button DockPanel.Dock="Right" Content="Reset prompt" MinWidth="0" Padding="9,2" Margin="0" Click="OnResetPrompt"/>
+                        <TextBlock Text="Prompt for the consolidated report ({count} and {notes} are filled in)" VerticalAlignment="Center" FontSize="12"/>
+                    </DockPanel>
+                    <TextBox x:Name="PromptBox" Height="150" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                             FontFamily="{StaticResource MonoFont}" FontSize="11.5" Padding="6,4"/>
+
+                    <TextBlock Style="{StaticResource Section}" Text="Formats"/>
+                    <WrapPanel>
+                        <CheckBox x:Name="PdfBox" Content="PDF" IsChecked="True" Margin="0,0,16,0"/>
+                        <CheckBox x:Name="DocxBox" Content="Word" Margin="0,0,16,0"/>
+                        <CheckBox x:Name="HtmlBox" Content="HTML" Margin="0,0,16,0"/>
+                        <CheckBox x:Name="TxtBox" Content="Text" Margin="0,0,16,0"/>
+                        <CheckBox x:Name="JsonBox" Content="JSON" Margin="0,0,16,0"/>
+                    </WrapPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>WhisperDesk.Addons</name>
+    </assembly>
+    <members>
+        <member name="T:WhisperDesk.Addons.IWhisperDeskAddon">
+            <summary>
+            Implement this in a .NET 8 class library. Put the DLL and an addon.json manifest (id, name, author, entry, capabilities)
+            in a folder under %LOCALAPPDATA%\WhisperDesk\addons\ (Tools → Add-ons → Open add-ons folder). WhisperDesk shows the
+            capabilities to the user and, once approved, runs the add-on in a separate sandboxed process (a Windows AppContainer)
+            that only receives the events and access it was granted. See sdk\README.md.
+            </summary>
+        </member>
+        <member name="P:WhisperDesk.Addons.IWhisperDeskAddon.Id">
+            <summary>Unique, stable id, e.g. "yourname.word-export".</summary>
+        </member>
+        <member name="P:WhisperDesk.Addons.IWhisperDeskAddon.Options">
+            <summary>Settings the user can edit in the Add-ons window. Values are read with <see cref="M:WhisperDesk.Addons.IAddonHost.GetOption(System.String)"/>.</summary>
+        </member>
+        <member name="M:WhisperDesk.Addons.IWhisperDeskAddon.Start(WhisperDesk.Addons.IAddonHost)">
+            <summary>Called when the add-on is enabled (or on startup if it was left enabled). Subscribe to host events here.</summary>
+        </member>
+        <member name="M:WhisperDesk.Addons.IWhisperDeskAddon.Stop">
+            <summary>Called when the add-on is disabled or the app closes. Unsubscribe and release resources.</summary>
+        </member>
+        <member name="T:WhisperDesk.Addons.AddonOption">
+            <summary>One user-editable setting shown in the Add-ons window.</summary>
+        </member>
+        <member name="M:WhisperDesk.Addons.AddonOption.#ctor(System.String,System.String,System.String,System.String)">
+            <summary>One user-editable setting shown in the Add-ons window.</summary>
+        </member>
+        <member name="P:WhisperDesk.Addons.AddonOption.IsSecret">
+            <summary>
+            A password, API key, token or URL containing one. Stored in Windows Credential Manager (never in settings files,
+            backups or logs), shown masked, and passed to the add-on only if it was granted the "credentials" capability.
+            </summary>
+        </member>
+        <member name="T:WhisperDesk.Addons.IAddonHostPermissions">
+            <summary>
+            Optional extra view of the host (cast <see cref="T:WhisperDesk.Addons.IAddonHost"/> to it): what the user approved for this add-on.
+            </summary>
+        </member>
+        <member name="P:WhisperDesk.Addons.IAddonHostPermissions.Capabilities">
+            <summary>The capabilities granted, e.g. "transcript.live", "network", "files".</summary>
+        </member>
+        <member name="P:WhisperDesk.Addons.IAddonHostPermissions.ApprovedFolder">
+            <summary>The folder the user approved for the "files" capability (the only place outside <see cref="P:WhisperDesk.Addons.IAddonHost.DataFolder"/>
+            the add-on can write), or null.</summary>
+        </member>
+        <member name="T:WhisperDesk.Addons.IAddonHost">
+            <summary>What WhisperDesk offers to add-ons. Events are raised on a background thread.</summary>
+        </member>
+        <member name="P:WhisperDesk.Addons.IAddonHost.DataFolder">
+            <summary>A folder the add-on may use for its own files (the only folder a sandboxed add-on can always write to).</summary>
+        </member>
+        <member name="M:WhisperDesk.Addons.IAddonHost.Log(System.String)">
+            <summary>Writes a line to the Add-ons log (shown in the Add-ons window).</summary>
+        </member>
+        <member name="E:WhisperDesk.Addons.IAddonHost.LineAdded">
+            <summary>A new transcript line (live sessions and file transcription).</summary>
+        </member>
+        <member name="E:WhisperDesk.Addons.IAddonHost.TranscriptSaved">
+            <summary>A complete transcript was written (file finished, speakers renamed, recording saved to the library).</summary>
+        </member>
+        <member name="E:WhisperDesk.Addons.IAddonHost.LineEdited">
+            <summary>A user corrected a line's text (with a required reason). Useful for audit trails.</summary>
+        </member>
+        <member name="T:WhisperDesk.Addons.LineEditedEvent">
+            <summary>An audited correction of one line: who, when, why, before and after.</summary>
+        </member>
+        <member name="M:WhisperDesk.Addons.LineEditedEvent.#ctor(System.String,System.TimeSpan,System.String,System.String,System.String,System.String,System.String,System.DateTimeOffset)">
+            <summary>An audited correction of one line: who, when, why, before and after.</summary>
+        </member>
+        <member name="P:WhisperDesk.Addons.TranscriptLineEvent.IsEdited">
+            <summary>True when the text was corrected by a user (see <see cref="E:WhisperDesk.Addons.IAddonHost.LineEdited"/>).</summary>
+        </member>
+        <member name="P:WhisperDesk.Addons.TranscriptLineEvent.OriginalText">
+            <summary>The text as originally transcribed, when edited.</summary>
+        </member>
+    </members>
+</doc>

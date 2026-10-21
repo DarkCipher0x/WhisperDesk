@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WhisperDesk MSI (WiX Toolset 5). Build with ..\build.ps1 -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <!-- UpgradeCode is the permanent identity of the product: never change it,
+       or new versions will install side-by-side instead of upgrading. -->
+  <Package Name="WhisperDesk"
+           Manufacturer="darkcipher0x"
+           Version="$(var.Version)"
+           UpgradeCode="3fc82978-8263-42a1-9d62-8b858d3c0a9b"
+           Scope="perMachine"
+           Compressed="yes"
+           Language="1033">
+
+    <SummaryInformation Description="WhisperDesk $(var.Version) Installer" Manufacturer="darkcipher0x" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of WhisperDesk is already installed." />
+    <!-- Always replace every file in WhisperDesk's own folder on upgrade and repair, whatever its version number. Without this,
+         an upgrade from 1.5.x skipped onnxruntime.dll (the old copy had a higher file version, 1.28.2 vs 1.28.0) and then
+         removed the old copy with the old product, leaving none. All files here are private to WhisperDesk. -->
+    <Property Id="REINSTALLMODE" Value="amus" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="AppIcon" SourceFile="Assets\app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPCONTACT" Value="darkcipher0x" />
+    <Property Id="ARPCOMMENTS" Value="Private, on-device transcription and speaker intelligence (whisper.cpp + Vulkan)" />
+    <!-- C:\Program Files\DarkCipher Systems\WhisperDesk (older versions in C:\Program Files\WhisperDesk are removed on upgrade) -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="CompanyFolder" Name="DarkCipher Systems">
+        <Directory Id="INSTALLFOLDER" Name="WhisperDesk" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- ===== Options chosen in the installer (remembered for repair / upgrade) ===== -->
+    <Property Id="FFMPEGPATH" Secure="yes">
+      <RegistrySearch Id="FindFfmpegPath" Root="HKLM" Key="Software\darkcipher0x\WhisperDesk" Name="FfmpegPath" Type="raw" />
+    </Property>
+    <Property Id="LIBRARYPATH" Secure="yes">
+      <RegistrySearch Id="FindLibraryPath" Root="HKLM" Key="Software\darkcipher0x\WhisperDesk" Name="DefaultLibraryPath" Type="raw" />
+    </Property>
+    <Property Id="MODELSPATH" Secure="yes">
+      <RegistrySearch Id="FindModelsPath" Root="HKLM" Key="Software\darkcipher0x\WhisperDesk" Name="DefaultModelsPath" Type="raw" />
+    </Property>
+    <!-- Off by default: nothing is downloaded during installation unless the user ticks it. -->
+    <Property Id="INSTALLFFMPEG" Secure="yes" />
+    <Property Id="INSTALLOLLAMA" Secure="yes" />
+    <!-- Uninstall: what else to remove (all off by default; data is kept unless ticked) -->
+    <Property Id="REMOVE_LIBRARY" Secure="yes" />
+    <Property Id="REMOVE_VOICES" Secure="yes" />
+    <Property Id="REMOVE_SETTINGS" Secure="yes" />
+    <Property Id="REMOVE_MODELS" Secure="yes" />
+
+    <Feature Id="Main" Title="WhisperDesk" Level="1">
+      <Files Directory="INSTALLFOLDER" Include="$(var.PublishDir)\**" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="MaintenanceShortcut" />
+      <ComponentRef Id="SessionFileType" />
+      <ComponentRef Id="InstallerOptions" />
+    </Feature>
+
+    <!-- Double-clicking a shared .wdsession opens it in WhisperDesk's player -->
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="SessionFileType" Guid="6a1f3e2c-58d4-4c1b-9b8e-2f7d0c4a9e51">
+        <RegistryValue Root="HKLM" Key="Software\Classes\.wdsession" Type="string" Value="darkcipher0x.WhisperDesk.Session" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\.wdsession" Name="Content Type" Type="string" Value="application/x-whisperdesk-session" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\darkcipher0x.WhisperDesk.Session" Type="string" Value="WhisperDesk session" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\darkcipher0x.WhisperDesk.Session\DefaultIcon" Type="string" Value="&quot;[INSTALLFOLDER]WhisperDesk.exe&quot;,0" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\darkcipher0x.WhisperDesk.Session\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]WhisperDesk.exe&quot; &quot;%1&quot;" />
+      </Component>
+      <!-- Paths chosen in the installer: WhisperDesk uses them when the user hasn't set their own in Settings -->
+      <Component Id="InstallerOptions" Guid="0d0a3a4e-6a2b-4c7e-9f1d-3b5e8c2a7f10">
+        <RegistryValue Root="HKLM" Key="Software\darkcipher0x\WhisperDesk" Name="FfmpegPath" Type="string" Value="[FFMPEGPATH]" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\darkcipher0x\WhisperDesk" Name="DefaultLibraryPath" Type="string" Value="[LIBRARYPATH]" />
+        <RegistryValue Root="HKLM" Key="Software\darkcipher0x\WhisperDesk" Name="DefaultModelsPath" Type="string" Value="[MODELSPATH]" />
+        <RegistryValue Root="HKLM" Key="Software\darkcipher0x\WhisperDesk" Name="Version" Type="string" Value="$(var.Version)" />
+      </Component>
+    </DirectoryRef>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="b362ccfa-d407-4550-b9b8-1878ae293835">
+        <Shortcut Id="AppShortcut"
+                  Name="WhisperDesk"
+                  Description="Private, on-device transcription - by darkcipher0x"
+                  Target="[INSTALLFOLDER]WhisperDesk.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon">
+          <!-- Matches App.AppUserModelId so the taskbar groups the window with this shortcut -->
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="darkcipher0x.WhisperDesk" />
+        </Shortcut>
+        <RegistryValue Root="HKLM" Key="Software\darkcipher0x\WhisperDesk"
+                       Name="InstallDir" Type="string" Value="[INSTALLFOLDER]" KeyPath="yes" />
+      </Component>
+      <!-- Opens this installer in maintenance mode: Repair, or Remove with the choice of what data to delete -->
+      <Component Id="MaintenanceShortcut" Guid="8b7f2c1d-4e5a-4f6b-9c8d-1a2b3c4d5e6f">
+        <Shortcut Id="RepairShortcut"
+                  Name="WhisperDesk - Repair or uninstall"
+                  Description="Repair WhisperDesk, or uninstall it and choose which of your data to remove"
+                  Target="[System64Folder]msiexec.exe"
+                  Arguments="/i [ProductCode]"
+                  Icon="AppIcon" />
+        <RegistryValue Root="HKLM" Key="Software\darkcipher0x\WhisperDesk" Name="MaintenanceShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <!-- ===== Custom actions ===== -->
+    <!-- Optional tools via winget (per user, no admin needed; skipped if already installed). -->
+    <CustomAction Id="InstallFfmpeg" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="yes" Return="ignore"
+                  ExeCommand="&quot;[System64Folder]cmd.exe&quot; /c where ffmpeg &gt;nul 2&gt;nul || winget install --id Gyan.FFmpeg -e --silent --accept-source-agreements --accept-package-agreements" />
+    <CustomAction Id="InstallOllama" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="yes" Return="ignore"
+                  ExeCommand="&quot;[System64Folder]cmd.exe&quot; /c where ollama &gt;nul 2&gt;nul || winget install --id Ollama.Ollama -e --silent --accept-source-agreements --accept-package-agreements" />
+    <!-- Uninstall: deletes the user data that was ticked (runs as the user, before the program files are removed). -->
+    <CustomAction Id="CleanupUserData" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="yes" Return="ignore"
+                  ExeCommand="&quot;[INSTALLFOLDER]WhisperDesk.exe&quot; --cleanup library=[REMOVE_LIBRARY] voices=[REMOVE_VOICES] settings=[REMOVE_SETTINGS] models=[REMOVE_MODELS]" />
+
+    <InstallExecuteSequence>
+      <Custom Action="CleanupUserData" Before="RemoveFiles"
+              Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE AND (REMOVE_LIBRARY=&quot;1&quot; OR REMOVE_VOICES=&quot;1&quot; OR REMOVE_SETTINGS=&quot;1&quot; OR REMOVE_MODELS=&quot;1&quot;)" />
+      <Custom Action="InstallFfmpeg" After="InstallFiles" Condition="INSTALLFFMPEG=&quot;1&quot; AND NOT REMOVE AND NOT FFMPEGPATH" />
+      <Custom Action="InstallOllama" After="InstallFfmpeg" Condition="INSTALLOLLAMA=&quot;1&quot; AND NOT REMOVE" />
+    </InstallExecuteSequence>
+
+    <!-- ===== Installer UI: InstallDir flow + "Tools & storage" + "Remove data" dialogs ===== -->
+    <UI Id="WhisperDeskUI">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Segoe UI" Size="9" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Segoe UI" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Segoe UI" Size="9" Bold="yes" />
+      <TextStyle Id="WD_Warn" FaceName="Segoe UI" Size="8" Red="168" Green="64" Blue="0" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+      <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+      <DialogRef Id="BrowseDlg" />
+      <DialogRef Id="DiskCostDlg" />
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+
+      <Dialog Id="WdToolsDlg" Width="370" Height="270" Title="!(loc.InstallDirDlg_Title)">
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.InstallDirDlgBannerBitmap)" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Tools &amp; storage" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes"
+                 Text="Optional helpers and where WhisperDesk keeps its data." />
+        <Control Id="Upgrading" Type="Text" X="20" Y="50" Width="330" Height="12" NoPrefix="yes" Hidden="yes" ShowCondition="WIX_UPGRADE_DETECTED"
+                 Text="Upgrading from an earlier version: your library, voices and settings are kept." />
+        <Control Id="FfmpegBox" Type="CheckBox" X="20" Y="66" Width="330" Height="12" Property="INSTALLFFMPEG" CheckBoxValue="1"
+                 Text="Download FFmpeg with winget now (needed to read audio/video)" />
+        <Control Id="FfmpegNote" Type="Text" X="33" Y="79" Width="320" Height="10" NoPrefix="yes"
+                 Text="Gyan.FFmpeg (GPL). Ticking accepts the winget source and package agreements." />
+        <Control Id="OllamaBox" Type="CheckBox" X="20" Y="94" Width="330" Height="12" Property="INSTALLOLLAMA" CheckBoxValue="1"
+                 Text="Download Ollama with winget now (optional: local AI summaries)" />
+        <Control Id="FfmpegLabel" Type="Text" X="20" Y="114" Width="330" Height="10" NoPrefix="yes" Text="Or use your own ffmpeg.exe (full path, optional):" />
+        <Control Id="FfmpegEdit" Type="Edit" X="20" Y="125" Width="330" Height="15" Property="FFMPEGPATH" />
+        <Control Id="LibraryLabel" Type="Text" X="20" Y="146" Width="330" Height="10" NoPrefix="yes" Text="Recordings library folder (optional; empty = %LOCALAPPDATA%\WhisperDesk\Library, not synced):" />
+        <Control Id="LibraryEdit" Type="Edit" X="20" Y="157" Width="330" Height="15" Property="LIBRARYPATH" />
+        <Control Id="ModelsLabel" Type="Text" X="20" Y="178" Width="330" Height="10" NoPrefix="yes" Text="Models folder (optional; empty = %LOCALAPPDATA%\WhisperDesk\models):" />
+        <Control Id="ModelsEdit" Type="Edit" X="20" Y="189" Width="330" Height="15" Property="MODELSPATH" />
+        <Control Id="PathsNote" Type="Text" X="20" Y="210" Width="330" Height="20" NoPrefix="yes"
+                 Text="A folder inside OneDrive, Dropbox or Google Drive (often Documents) uploads your recordings to the cloud. Every path can be changed later in Settings." />
+      </Dialog>
+
+      <Dialog Id="WdRemoveDataDlg" Width="370" Height="270" Title="!(loc.MaintenanceTypeDlg_Title)">
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.MaintenanceTypeDlgBannerBitmap)" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="250" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Remove your data too?" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="300" Height="15" Transparent="yes" NoPrefix="yes"
+                 Text="The program is removed. Tick anything you also want deleted for your account." />
+        <Control Id="LibraryBox" Type="CheckBox" X="20" Y="54" Width="330" Height="12" Property="REMOVE_LIBRARY" CheckBoxValue="1"
+                 Text="Recordings library: transcripts, audio, summaries" />
+        <Control Id="LibraryWarn" Type="Text" X="33" Y="67" Width="320" Height="10" NoPrefix="yes"
+                 Text="{\WD_Warn}Permanently deletes every recording and transcript. Make a backup first (File > Backup)." />
+        <Control Id="VoicesBox" Type="CheckBox" X="20" Y="84" Width="330" Height="12" Property="REMOVE_VOICES" CheckBoxValue="1"
+                 Text="Voice library: saved voiceprints (biometric data)" />
+        <Control Id="VoicesWarn" Type="Text" X="33" Y="97" Width="320" Height="10" NoPrefix="yes"
+                 Text="{\WD_Warn}Known voices will no longer be recognised automatically." />
+        <Control Id="SettingsBox" Type="CheckBox" X="20" Y="114" Width="330" Height="12" Property="REMOVE_SETTINGS" CheckBoxValue="1"
+                 Text="Settings, logs, add-ons, recovery files and caches" />
+        <Control Id="SettingsWarn" Type="Text" X="33" Y="127" Width="320" Height="10" NoPrefix="yes"
+                 Text="{\WD_Warn}Your preferences, AI prompt and installed add-ons are lost." />
+        <Control Id="ModelsBox" Type="CheckBox" X="20" Y="144" Width="330" Height="12" Property="REMOVE_MODELS" CheckBoxValue="1"
+                 Text="Downloaded models (several GB)" />
+        <Control Id="ModelsWarn" Type="Text" X="33" Y="157" Width="320" Height="10" NoPrefix="yes"
+                 Text="{\WD_Warn}They are downloaded again if you reinstall. Imported custom models are deleted too." />
+        <Control Id="Note" Type="Text" X="20" Y="178" Width="330" Height="40" NoPrefix="yes"
+                 Text="Nothing is deleted unless ticked. FFmpeg and Ollama are separate programs: remove them in Windows Settings > Apps if you no longer need them. Exported files and backups you saved elsewhere are never touched." />
+      </Dialog>
+
+      <Publish Dialog="BrowseDlg" Control="OK" Event="DoAction" Value="WixUIValidatePath_$(sys.BUILDARCHSHORT)" Order="3" Condition="NOT WIXUI_DONTVALIDATEPATH" />
+      <Publish Dialog="BrowseDlg" Control="OK" Event="SpawnDialog" Value="InvalidDirDlg" Order="4" Condition="NOT WIXUI_DONTVALIDATEPATH AND WIXUI_INSTALLDIR_VALID&lt;&gt;&quot;1&quot;" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="LicenseAgreementDlg" Condition="NOT Installed" />
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="Installed AND PATCH" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Print" Event="DoAction" Value="WixUIPrintEula_$(sys.BUILDARCHSHORT)" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Condition="LicenseAccepted = &quot;1&quot;" />
+      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg" />
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="SetTargetPath" Value="[WIXUI_INSTALLDIR]" Order="1" />
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="DoAction" Value="WixUIValidatePath_$(sys.BUILDARCHSHORT)" Order="2" Condition="NOT WIXUI_DONTVALIDATEPATH" />
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="SpawnDialog" Value="InvalidDirDlg" Order="3" Condition="NOT WIXUI_DONTVALIDATEPATH AND WIXUI_INSTALLDIR_VALID&lt;&gt;&quot;1&quot;" />
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="WdToolsDlg" Order="4" Condition="WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID=&quot;1&quot;" />
+      <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Property="_BrowseProperty" Value="[WIXUI_INSTALLDIR]" Order="1" />
+      <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Event="SpawnDialog" Value="BrowseDlg" Order="2" />
+
+      <Publish Dialog="WdToolsDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
+      <Publish Dialog="WdToolsDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" />
+
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WdToolsDlg" Order="1" Condition="NOT Installed" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2" Condition="Installed AND NOT PATCH AND WixUI_InstallMode&lt;&gt;&quot;Remove&quot;" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WdRemoveDataDlg" Order="2" Condition="Installed AND WixUI_InstallMode=&quot;Remove&quot;" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2" Condition="Installed AND PATCH" />
+
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="WdRemoveDataDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+      <Publish Dialog="WdRemoveDataDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="WdRemoveDataDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" />
+
+      <Property Id="ARPNOMODIFY" Value="1" />
+    </UI>
+    <UIRef Id="WixUI_Common" />
+    <WixVariable Id="WixUILicenseRtf" Value="Installer\License.rtf" />
+  </Package>
+</Wix>

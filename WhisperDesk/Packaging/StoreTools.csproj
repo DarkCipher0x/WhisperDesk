@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Not built. build.ps1 restores it (locked, audited, like the app) only to get Microsoft's MSIX tools
+       (makeappx.exe, makepri.exe, signtool.exe) from the Microsoft.Windows.SDK.BuildTools package, so the build doesn't
+       need the Windows SDK installed. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" ExcludeAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+
+</Project>

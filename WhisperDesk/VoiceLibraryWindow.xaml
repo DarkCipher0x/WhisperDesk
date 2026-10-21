@@ -1,0 +1,151 @@
+﻿<Window x:Class="WhisperDesk.VoiceLibraryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svc="clr-namespace:WhisperDesk.Services"
+        Title="Voice library — WhisperDesk" Height="700" Width="1080" MinHeight="460" MinWidth="820"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="Assets/app.ico"
+        FontFamily="Segoe UI" FontSize="13" Background="{DynamicResource Bg}" Foreground="{DynamicResource Fg}"
+        SourceInitialized="OnSourceInitialized">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,10">
+            Voices WhisperDesk recognises automatically in new files and live sessions. Voiceprints are stored only on this PC.
+            Select a voice to rename it and to see every line it spoke across your library.
+        </TextBlock>
+
+        <!-- Add a voice ahead of time -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                CornerRadius="2" Padding="10" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="ADD A VOICE FROM A RECORDING OF ONE PERSON" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="NewName" Padding="5,4"/>
+                    <TextBlock Text="Name" IsHitTestVisible="False" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Muted}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=NewName}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <ComboBox Grid.Column="2" x:Name="NewSex" ItemsSource="{x:Static svc:Sexes.All}" SelectedIndex="2"/>
+                    <Button Grid.Column="4" x:Name="AddFromFileButton" Content="Choose audio…" Margin="0" Click="OnAddFromFile"/>
+                </Grid>
+                <TextBlock x:Name="AddStatus" FontSize="11.5" Foreground="{DynamicResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Text="Best with 10–60 seconds of that person talking alone. Adding more recordings of the same name improves recognition."/>
+            </StackPanel>
+        </Border>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <Button DockPanel.Dock="Right" Content="Close" Margin="0" IsCancel="True" Click="OnClose"/>
+            <Button x:Name="ForgetButton" Content="Forget selected voice" IsEnabled="False" Click="OnForget"/>
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0" Foreground="{DynamicResource Muted}" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="400" MinWidth="260"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*" MinWidth="320"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Voices -->
+            <Grid>
+                <ListView x:Name="VoicesList" SelectionChanged="OnSelectionChanged" SelectionMode="Single">
+                    <ListView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Rename…" Click="OnRenameMenu"/>
+                            <MenuItem Header="Find lines spoken by this voice" Click="OnFindLines"/>
+                            <Separator/>
+                            <MenuItem Header="Forget this voice…" Click="OnForget"/>
+                        </ContextMenu>
+                    </ListView.ContextMenu>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Name" Width="150" DisplayMemberBinding="{Binding Name}"/>
+                            <GridViewColumn Header="Sex" Width="78" DisplayMemberBinding="{Binding Sex}"/>
+                            <GridViewColumn Header="Samples" Width="62" DisplayMemberBinding="{Binding Embeddings.Count}"/>
+                            <GridViewColumn Header="Updated" Width="110" DisplayMemberBinding="{Binding Updated, StringFormat=yyyy-MM-dd HH:mm}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <TextBlock x:Name="EmptyHint" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                           Foreground="{DynamicResource Muted}" IsHitTestVisible="False"
+                           Text="No saved voices yet.&#10;Add one above, or name a speaker after transcribing&#10;and click “Save changes &amp; update files”."/>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Width="12" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns" Focusable="False"/>
+
+            <!-- Details -->
+            <DockPanel Grid.Column="2" x:Name="DetailsPanel" IsEnabled="False">
+                <Border DockPanel.Dock="Top" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                        CornerRadius="2" Padding="10" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="VOICE DETAILS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="EditName" Padding="5,4" TextChanged="OnDetailsChanged" ToolTip="The name used for this voice everywhere"/>
+                            <ComboBox Grid.Column="2" x:Name="EditSex" ItemsSource="{x:Static svc:Sexes.All}" SelectionChanged="OnDetailsChanged"/>
+                            <Button Grid.Column="4" x:Name="SaveDetailsButton" Content="Save" Style="{StaticResource PrimaryButton}" Margin="0"
+                                    IsEnabled="False" Click="OnSaveDetails"/>
+                        </Grid>
+                        <CheckBox x:Name="RenameInRecordings" Margin="0,8,0,0" IsChecked="True"
+                                  Content="Also rename this person in my saved recordings (transcripts are rewritten)"/>
+                    </StackPanel>
+                </Border>
+
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                    <CheckBox DockPanel.Dock="Right" x:Name="IncludeMatches" Content="Include unnamed speakers that sound like them"
+                              IsChecked="True" FontSize="12" Click="OnFindLines" VerticalAlignment="Bottom"/>
+                    <TextBlock x:Name="LinesHeader" Style="{StaticResource Label}" Text="LINES SPOKEN BY THIS VOICE" VerticalAlignment="Bottom"/>
+                </DockPanel>
+                <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                    <Button x:Name="OpenPlayerButton" Content="▶ Open recording in player" Margin="0" IsEnabled="False" Click="OnOpenPlayer"/>
+                    <TextBlock x:Name="LinesStatus" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{DynamicResource Muted}" TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
+                <ListView x:Name="LinesList" SelectionMode="Single" SelectionChanged="OnLineSelected" MouseDoubleClick="OnOpenPlayer">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Width="40">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button DataContext="{Binding Line}" Style="{StaticResource PlayToggle}" Click="OnPlayLine"
+                                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListViewItem}}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Recording" Width="150" DisplayMemberBinding="{Binding Title}"/>
+                            <GridViewColumn Header="Date" Width="86" DisplayMemberBinding="{Binding Date}"/>
+                            <GridViewColumn Header="Time" Width="66" DisplayMemberBinding="{Binding Line.Time}"/>
+                            <GridViewColumn Header="Match" Width="70" DisplayMemberBinding="{Binding How}"/>
+                            <GridViewColumn Header="Text" Width="420">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Line.Text}" TextWrapping="Wrap"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

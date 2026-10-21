@@ -1,0 +1,623 @@
+<Window x:Class="WhisperDesk.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svc="clr-namespace:WhisperDesk.Services"
+        xmlns:local="clr-namespace:WhisperDesk"
+        Title="WhisperDesk — by darkcipher0x" Height="900" Width="1220" MinHeight="680" MinWidth="960"
+        WindowStartupLocation="CenterScreen" Icon="Assets/app.ico" FontFamily="Segoe UI" FontSize="13" Background="{DynamicResource Bg}" Foreground="{DynamicResource Fg}" SourceInitialized="OnSourceInitialized"
+        AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver" Closing="OnClosing">
+    <Window.InputBindings>
+        <KeyBinding Key="O" Modifiers="Control" Command="{x:Static ApplicationCommands.Open}"/>
+        <KeyBinding Key="OemComma" Modifiers="Control" Command="{x:Static ApplicationCommands.Properties}"/>
+        <KeyBinding Key="F1" Command="{x:Static ApplicationCommands.Help}"/>
+        <KeyBinding Key="F" Modifiers="Control+Shift" Command="{x:Static local:Commands.OpenFeed}"/>
+        <KeyBinding Key="L" Modifiers="Control" Command="{x:Static local:Commands.Lock}"/>
+    </Window.InputBindings>
+    <Window.CommandBindings>
+        <CommandBinding Command="{x:Static local:Commands.PlayLine}" Executed="OnPlayLine"/>
+        <CommandBinding Command="{x:Static local:Commands.EditLine}" Executed="OnEditLine"/>
+        <CommandBinding Command="{x:Static ApplicationCommands.Open}" Executed="OnCmdOpen"/>
+        <CommandBinding Command="{x:Static ApplicationCommands.Properties}" Executed="OnCmdSettings"/>
+        <CommandBinding Command="{x:Static ApplicationCommands.Help}" Executed="OnOpenGuide"/>
+        <CommandBinding Command="{x:Static local:Commands.OpenFeed}" Executed="OnOpenFeed"/>
+        <CommandBinding Command="{x:Static local:Commands.Lock}" Executed="OnLock"/>
+    </Window.CommandBindings>
+    <DockPanel>
+        <!-- Menu -->
+        <Menu DockPanel.Dock="Top" x:Name="MainMenu">
+            <MenuItem Header="_File">
+                <MenuItem x:Name="MenuAddFiles" Header="_Add files…        Ctrl+O" Click="OnAddFiles"/>
+                <MenuItem x:Name="MenuAddFolder" Header="Add _folder…" Click="OnAddFolder"/>
+                <Separator/>
+                <MenuItem x:Name="MenuImport" Header="_Import">
+                    <MenuItem Header="Session package (.wdsession)…" Click="OnOpenSession"
+                              ToolTip="Open a recording someone exported from WhisperDesk (transcript, speakers and audio) and add it to your library"/>
+                </MenuItem>
+                <MenuItem x:Name="MenuExport" Header="_Export">
+                    <MenuItem Header="Transcript in the pane…" Click="OnExportTranscript"/>
+                    <MenuItem Header="Summary of the transcript in the pane…" Click="OnSummary"/>
+                    <MenuItem Header="Library recording as session package / web player…" Click="OnExportLibraryRecording"
+                              ToolTip="Select a recording in the Library tab first"/>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="_Backup…" Click="OnBackup" ToolTip="Back up the library, voices, settings and add-ons into one file, optionally encrypted (AES-256)"/>
+                <MenuItem Header="_Restore from backup…" Click="OnRestore"/>
+                <Separator/>
+                <MenuItem Header="_Open output folder" Click="OnOpenOutput"/>
+                <Separator/>
+                <MenuItem Header="_Settings…        Ctrl+," Click="OnSettings"/>
+                <MenuItem Header="Security &amp; _privacy…" Click="OnSecuritySettings"
+                          ToolTip="Encryption, lock screen, two-factor sign-in, network use and add-on permissions"/>
+                <MenuItem x:Name="LockMenuItem" Header="_Lock WhisperDesk        Ctrl+L" Click="OnLock"
+                          ToolTip="Hide everything and forget the encryption key until the passphrase is entered (needs encryption on)"/>
+                <Separator/>
+                <MenuItem Header="E_xit" Click="OnExit"/>
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="Theme: _System" Tag="System" Click="OnMenuTheme"/>
+                <MenuItem Header="Theme: _Dark" Tag="Dark" Click="OnMenuTheme"/>
+                <MenuItem Header="Theme: _Light" Tag="Light" Click="OnMenuTheme"/>
+                <Separator/>
+                <MenuItem Header="_Files tab" Tag="Files" Click="OnMenuTab"/>
+                <MenuItem Header="_Live tab" Tag="Live" Click="OnMenuTab"/>
+                <MenuItem Header="Li_brary tab" Tag="Library" Click="OnMenuTab"/>
+                <Separator/>
+                <MenuItem Header="Live _feed window        Ctrl+Shift+F" Click="OnOpenFeed"
+                          ToolTip="A clean, chat-style read-only feed of the transcript: put it full screen, snap it to a side, or on a second monitor"/>
+                <MenuItem Header="_Clear the transcript pane" Click="OnClearTranscriptView"/>
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="_Voice library…" Click="OnVoiceLibrary"/>
+                <MenuItem Header="Voice &amp; audio _analysis…" Click="OnVoiceAnalysis"
+                          ToolTip="Voice profiles (pitch, jitter, shimmer, HNR, formants), voice comparison, and audio integrity checks — exportable report"/>
+                <MenuItem Header="_Report on recordings…" Click="OnBulkReportMenu"
+                          ToolTip="Reports and summaries across several library recordings, with audit trail and optional local AI"/>
+                <MenuItem Header="_Schedule transcription…" Click="OnSchedule"/>
+                <Separator/>
+                <MenuItem Header="A_dd-ons…" Click="OnAddons"/>
+                <MenuItem Header="OBS / browser _captions (open in browser)" Click="OnOpenCaptions"
+                          ToolTip="Opens the live-caption page with OBS Browser Source links (needs the “Live captions for OBS” add-on switched on)"/>
+                <Separator/>
+                <MenuItem Header="_Models">
+                    <MenuItem Header="_Import a custom model…" Click="OnImportModel"
+                              ToolTip="Use any whisper.cpp (GGML) model: fine-tuned, distilled, quantised or language-specific"/>
+                    <MenuItem Header="_Remove the selected custom model…" Click="OnRemoveModel"/>
+                    <MenuItem Header="_Open models folder" Click="OnOpenModels"/>
+                    <MenuItem Header="_Move models to another folder…" Click="OnSettings"
+                              ToolTip="Settings → Tools &amp; storage → Move models to…"/>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_User &amp; admin guide        F1" Click="OnOpenGuide"/>
+                <MenuItem Header="Open the guide in your _PDF app" Click="OnOpenGuideExternal"/>
+                <MenuItem Header="_Privacy &amp; security" Click="OnPrivacy"/>
+                <Separator/>
+                <MenuItem Header="_About WhisperDesk" Click="OnAbout"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- Header -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource HeaderBg}" Padding="16,10" BorderBrush="{DynamicResource Accent}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <ComboBox DockPanel.Dock="Right" x:Name="ThemeBox" Width="118" Margin="10,0,0,0" VerticalAlignment="Center"
+                          SelectionChanged="OnThemeChanged" ToolTip="Colour theme">
+                    <ComboBoxItem Content="◐  System" Tag="System"/>
+                    <ComboBoxItem Content="☾  Dark" Tag="Dark"/>
+                    <ComboBoxItem Content="☀  Light" Tag="Light"/>
+                </ComboBox>
+                <Border DockPanel.Dock="Right" x:Name="RuntimeBadge" CornerRadius="1" Padding="10,3" BorderThickness="1"
+                        BorderBrush="{DynamicResource Brand}" Background="Transparent" VerticalAlignment="Center">
+                    <TextBlock x:Name="RuntimeText" Foreground="{DynamicResource Brand}" FontFamily="{StaticResource MonoFont}" FontSize="11" Text="engine: not loaded"/>
+                </Border>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="Assets/logo.png" Width="38" Height="38" Margin="0,0,12,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="WhisperDesk" Foreground="{DynamicResource HeaderFg}" FontFamily="{StaticResource MonoFont}" FontSize="19" FontWeight="Bold"/>
+                            <TextBlock x:Name="VersionText" Foreground="{DynamicResource Muted}" FontFamily="{StaticResource MonoFont}" FontSize="11" Margin="10,0,0,2" VerticalAlignment="Bottom"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                            <TextBlock Text="darkcipher0x@whisperdesk:~$" Foreground="{DynamicResource Brand}" FontFamily="{StaticResource MonoFont}" FontSize="11.5"/>
+                            <!-- blinking block cursor -->
+                            <Border Width="7" Height="13" Margin="5,0,0,0" Background="{DynamicResource Brand}" VerticalAlignment="Center">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="Opacity" Duration="0:0:1.1">
+                                                    <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
+                                                    <DiscreteDoubleKeyFrame KeyTime="0:0:0.55" Value="0"/>
+                                                </DoubleAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Storage warning: library inside a cloud-synced folder, or recordings found in the old Documents library -->
+        <Border DockPanel.Dock="Top" x:Name="StorageBanner" Visibility="Collapsed" Background="{DynamicResource Surface}"
+                BorderBrush="#E8A33D" BorderThickness="0,0,0,2" Padding="16,8">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" x:Name="StorageDismiss" Content="Dismiss" MinWidth="0" Margin="6,0,0,0" VerticalAlignment="Center"
+                        Click="OnStorageDismiss" ToolTip="Hide this warning for this folder (it stays in Settings → Storage &amp; tools)"/>
+                <Button DockPanel.Dock="Right" x:Name="StorageAction" MinWidth="0" Margin="10,0,0,0" VerticalAlignment="Center" Click="OnStorageAction"/>
+                <TextBlock x:Name="StorageText" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource Fg}"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Status bar -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="14,6">
+            <DockPanel>
+                <!-- Only visible while files are being transcribed -->
+                <ProgressBar x:Name="OverallProgress" DockPanel.Dock="Right" Width="220" Height="6" Maximum="100" Visibility="Collapsed"
+                             VerticalAlignment="Center" ToolTip="Overall progress"/>
+                <TextBlock x:Name="StatusText" Text="Ready. Drop audio or video files here." VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+        </Border>
+
+        <Grid Margin="16,12,16,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*" MinHeight="240"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*" MinHeight="200"/>
+            </Grid.RowDefinitions>
+
+            <!-- Settings -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2.2*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="1.1*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="1.1*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Style="{StaticResource Label}" Text="MODEL"/>
+                    <ComboBox x:Name="ModelBox" SelectionChanged="OnModelChanged"/>
+                    <TextBlock x:Name="ModelStatus" FontSize="11" Margin="0,3,0,0" Foreground="{DynamicResource Muted}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Style="{StaticResource Label}" Text="HARDWARE"/>
+                    <ComboBox x:Name="DeviceBox" SelectionChanged="OnHardwareChanged" ToolTip="Auto uses the NPU when this PC has one (and the model has an NPU version), otherwise the GPU, otherwise the CPU.">
+                        <ComboBoxItem Content="Auto"/>
+                        <ComboBoxItem Content="NPU"/>
+                        <ComboBoxItem Content="GPU (Vulkan)"/>
+                        <ComboBoxItem Content="CPU only"/>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Style="{StaticResource Label}" Text="LANGUAGE"/>
+                    <ComboBox x:Name="LanguageBox" SelectedValuePath="Key">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Value}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="6" VerticalAlignment="Top">
+                    <TextBlock Style="{StaticResource Label}" Text="OPTIONS"/>
+                    <CheckBox x:Name="TranslateBox" Content="Translate to English" Margin="0,3,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                        <CheckBox x:Name="SpeakersBox" Content="Identify speakers" VerticalAlignment="Center"
+                                  ToolTip="Tag every line with who is speaking, and recognise voices saved in your voice library"/>
+                        <ComboBox x:Name="SpeakerCountBox" Width="92" Margin="10,0,0,0" MinHeight="24" FontSize="12"
+                                  IsEnabled="{Binding IsChecked, ElementName=SpeakersBox}"
+                                  ToolTip="How many people talk in the recording (Auto detects it)">
+                            <ComboBoxItem Content="Auto" Tag="0"/>
+                            <ComboBoxItem Content="2 people" Tag="2"/>
+                            <ComboBoxItem Content="3 people" Tag="3"/>
+                            <ComboBoxItem Content="4 people" Tag="4"/>
+                            <ComboBoxItem Content="5 people" Tag="5"/>
+                            <ComboBoxItem Content="6 people" Tag="6"/>
+                            <ComboBoxItem Content="7 people" Tag="7"/>
+                            <ComboBoxItem Content="8 people" Tag="8"/>
+                            <ComboBoxItem Content="10 people" Tag="10"/>
+                            <ComboBoxItem Content="12 people" Tag="12"/>
+                            <ComboBoxItem Content="15 people" Tag="15"/>
+                            <ComboBoxItem Content="20 people" Tag="20"/>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <TabControl x:Name="MainTabs" Grid.Row="1" Margin="0,12,0,0" SelectionChanged="OnTabChanged">
+                <TabItem x:Name="FilesTab" Header="Files">
+                    <DockPanel>
+            <!-- Output -->
+            <Border DockPanel.Dock="Top" Margin="0,12,0,10" Padding="10,8" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="2">
+                <DockPanel>
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <TextBlock Text="Save as:" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource Muted}"/>
+                        <!-- Multi-select output formats: a compact dropdown of tickboxes -->
+                        <ToggleButton x:Name="FormatsButton" MinWidth="250" MaxWidth="360" Padding="10,4" Margin="0,0,24,0" HorizontalContentAlignment="Stretch"
+                                      ToolTip="Choose which files to write for each transcribed file">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="▾" Margin="8,0,0,0" Foreground="{DynamicResource Muted}"/>
+                                <TextBlock x:Name="FormatsText" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI" FontSize="12.5"/>
+                            </DockPanel>
+                        </ToggleButton>
+                        <Popup x:Name="FormatsPopup" PlacementTarget="{Binding ElementName=FormatsButton}" Placement="Bottom" StaysOpen="False"
+                               AllowsTransparency="True" IsOpen="{Binding IsChecked, ElementName=FormatsButton, Mode=TwoWay}"
+                               Opened="OnFormatsOpened" Closed="OnFormatsClosed">
+                            <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Accent}" BorderThickness="1" CornerRadius="3"
+                                    Padding="14,10" Margin="0,4,8,8" MinWidth="280">
+                                <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.35"/></Border.Effect>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Label}" Text="TRANSCRIPT FILES"/>
+                                    <CheckBox x:Name="TxtBox" Content="Text (.txt)" Margin="0,3" Checked="OnFormatChanged" Unchecked="OnFormatChanged"/>
+                                    <CheckBox x:Name="SrtBox" Content="Subtitles (.srt)" Margin="0,3" Checked="OnFormatChanged" Unchecked="OnFormatChanged"/>
+                                    <CheckBox x:Name="VttBox" Content="Web subtitles (.vtt)" Margin="0,3" Checked="OnFormatChanged" Unchecked="OnFormatChanged"/>
+                                    <CheckBox x:Name="JsonBox" Content="Data (.json)" Margin="0,3" Checked="OnFormatChanged" Unchecked="OnFormatChanged"/>
+                                    <CheckBox x:Name="DocxBox" Content="Word (.docx)" Margin="0,3" Checked="OnFormatChanged" Unchecked="OnFormatChanged"
+                                              ToolTip="Word document with speaker names and timestamps"/>
+                                    <CheckBox x:Name="PdfBox" Content="PDF" Margin="0,3" Checked="OnFormatChanged" Unchecked="OnFormatChanged"
+                                              ToolTip="PDF document with speaker names and timestamps"/>
+                                    <TextBlock Style="{StaticResource Label}" Text="EXTRAS" Margin="0,10,0,4"/>
+                                    <CheckBox x:Name="SummaryBox" Content="Summary report (TXT, Word, PDF, JSON)" Margin="0,3" Checked="OnFormatChanged" Unchecked="OnFormatChanged"
+                                              ToolTip="Also write a summary report: overview, what was said, action items, decisions, questions"/>
+                                    <CheckBox x:Name="BurnBox" Content="Burn subtitles into video" Margin="0,3" Checked="OnFormatChanged" Unchecked="OnFormatChanged"
+                                              ToolTip="Also make name.subtitled.mp4 with the subtitles drawn into the picture (video files only). Style in Settings."/>
+                                    <Border Height="1" Background="{DynamicResource Line}" Margin="0,10,0,8"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Make this my default" MinWidth="0" Padding="9,3" Click="OnSaveDefaultFormats"/>
+                                        <Button Content="Use my default" MinWidth="0" Padding="9,3" Margin="0" Click="OnUseDefaultFormats"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="DefaultFormatsText" FontSize="11" Foreground="{DynamicResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
+                        <TextBlock Text="Output folder:" Margin="0,0,8,0" VerticalAlignment="Center" Foreground="{DynamicResource Muted}"/>
+                    </StackPanel>
+                    <Button DockPanel.Dock="Right" Content="Same as source" MinWidth="0" Margin="6,0,0,0" Click="OnResetOutput"/>
+                    <Button DockPanel.Dock="Right" Content="Browse…" MinWidth="0" Margin="6,0,0,0" Click="OnBrowseOutput"/>
+                    <TextBlock x:Name="OutputText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
+            </Border>
+            <!-- Actions -->
+            <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <TextBlock x:Name="ScheduleText" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,10,0" Cursor="Hand"
+                               Foreground="{DynamicResource Accent}" MouseLeftButtonUp="OnScheduleTextClick" ToolTip="Click to change or remove the schedule"/>
+                    <Button x:Name="ScheduleButton" Content="Schedule…" Click="OnSchedule" ToolTip="Transcribe the waiting files later (e.g. overnight)"/>
+                    <Button x:Name="CancelButton" Content="Cancel" IsEnabled="False" Click="OnCancel"/>
+                    <Button x:Name="StartButton" Content="Transcribe" Style="{StaticResource PrimaryButton}" MinWidth="120" Margin="0" Click="OnStart"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="AddFilesButton" Content="Add files…" Click="OnAddFiles"/>
+                    <Button x:Name="AddFolderButton" Content="Add folder…" Click="OnAddFolder"/>
+                    <Button x:Name="RemoveButton" Content="Remove" Click="OnRemove"/>
+                    <Button x:Name="ClearButton" Content="Clear" Click="OnClear"/>
+                    <Button Content="Open output" Click="OnOpenOutput"/>
+                    <Button x:Name="SaveToLibraryButton" Content="Save to library…" Click="OnSaveToLibrary"
+                            ToolTip="Store the selected file's transcript in your recordings library (with title, type, folder, tags)"/>
+                </StackPanel>
+            </DockPanel>
+            <!-- Queue -->
+            <Grid>
+                <ListView x:Name="QueueList" SelectionMode="Extended" SelectionChanged="OnQueueSelectionChanged" ContextMenuOpening="OnQueueMenuOpening">
+                    <ListView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem x:Name="QueueMenuTranscribe" Header="Transcribe all waiting" FontWeight="Bold" Click="OnStart"/>
+                            <MenuItem x:Name="QueueMenuTranscribeSelected" Header="Transcribe selected only" Click="OnTranscribeSelected"/>
+                            <MenuItem x:Name="QueueMenuRetranscribe" Header="Re-transcribe selected" Click="OnRetranscribeSelected"
+                                      ToolTip="Run finished files again (e.g. after changing the model or settings)"/>
+                            <MenuItem x:Name="QueueMenuSchedule" Header="Schedule…" Click="OnSchedule"
+                                      ToolTip="Transcribe the waiting files later (e.g. overnight)"/>
+                            <Separator/>
+                            <MenuItem x:Name="QueueMenuShow" Header="Show transcript below" Click="OnShowSelectedTranscript"/>
+                            <MenuItem x:Name="QueueMenuSave" Header="Save to library…" Click="OnSaveToLibrary"/>
+                            <MenuItem x:Name="QueueMenuSummary" Header="Summary…" Click="OnSummary"/>
+                            <MenuItem x:Name="QueueMenuReanalyse" Header="Re-analyse speakers…" Click="OnReanalyseSpeakers"/>
+                            <Separator/>
+                            <MenuItem x:Name="QueueMenuAddFiles" Header="Add files…" Click="OnAddFiles"/>
+                            <MenuItem x:Name="QueueMenuAddFolder" Header="Add folder…" Click="OnAddFolder"/>
+                            <MenuItem x:Name="QueueMenuRemove" Header="Remove selected" Click="OnRemove"/>
+                            <MenuItem x:Name="QueueMenuClearDone" Header="Clear finished" Click="OnClearFinished"/>
+                            <MenuItem x:Name="QueueMenuClear" Header="Clear list" Click="OnClear"/>
+                            <MenuItem Header="Clear the transcript pane" Click="OnClearTranscriptView"/>
+                            <Separator/>
+                            <MenuItem Header="Open output folder" Click="OnOpenOutput"/>
+                            <MenuItem x:Name="QueueMenuReveal" Header="Show source file in Explorer" Click="OnRevealSource"/>
+                        </ContextMenu>
+                    </ListView.ContextMenu>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="File" Width="400" DisplayMemberBinding="{Binding FileName}"/>
+                            <GridViewColumn Header="Status" Width="330" DisplayMemberBinding="{Binding Status}"/>
+                            <GridViewColumn Header="Progress" Width="180">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ProgressBar Width="160" Height="10" Maximum="100" Value="{Binding Progress}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <TextBlock x:Name="DropHint" IsHitTestVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30,0,0"
+                           TextAlignment="Center" Foreground="{DynamicResource Muted}" FontSize="15">
+                    Drag &amp; drop audio or video files / folders here<LineBreak/>
+                    <Run FontSize="11">mp3 · wav · m4a · flac · ogg · mp4 · mkv · mov · webm · and more</Run>
+                </TextBlock>
+            </Grid>
+                    </DockPanel>
+                </TabItem>
+                <TabItem x:Name="LiveTab" Header="●  Live">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                        <StackPanel>
+                            <!-- Input + transport -->
+                            <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="3" Padding="14,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Label}" Text="AUDIO INPUT"/>
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="↻" MinWidth="0" Margin="6,0,0,0" Padding="9,3"
+                                                    ToolTip="Refresh device list" Click="OnRefreshDevices"/>
+                                            <ComboBox x:Name="LiveDeviceBox"
+                                                      ToolTip="Microphones, line-ins and virtual cables (e.g. VoiceMeeter Out B1) — or 🔊 a playback device to transcribe what your PC is playing"/>
+                                        </DockPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="18,0,18,0" VerticalAlignment="Bottom">
+                                        <TextBlock Style="{StaticResource Label}" Text="ELAPSED" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="LiveClock" Text="00:00:00" FontFamily="Cascadia Mono, Consolas" FontSize="20" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                        <Button x:Name="LiveStopButton" Content="■  Stop" IsEnabled="False" Click="OnLiveStop" MinWidth="96"/>
+                                        <Button x:Name="LiveStartButton" Content="●  Start live" Style="{StaticResource PrimaryButton}" Margin="0"
+                                                MinWidth="130" Click="OnLiveStart"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Level + options -->
+                            <Border Margin="0,10,0,0" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="3" Padding="14,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="LEVEL" Style="{StaticResource Label}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                    <ProgressBar Grid.Column="1" x:Name="LiveLevel" Height="8" Maximum="1" VerticalAlignment="Center"/>
+                                    <CheckBox Grid.Column="2" x:Name="LiveKeepAudioBox" Content="Keep audio recording" IsChecked="True" Margin="20,0,0,0"
+                                              VerticalAlignment="Center"
+                                              ToolTip="On: save the session audio together with the transcript. Off: save only the transcript (no audio is written to disk)."/>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock x:Name="LiveInfo" Margin="2,10,2,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource Muted}">
+                                Lines appear right after each pause in speech, tagged with who is speaking. Known voices from your voice library are named
+                                automatically; new voices become Speaker 1, 2, 3… and can be named while the session runs. When you stop, the session
+                                (transcript, and audio if kept) is saved to your Library.
+                            </TextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem x:Name="LibraryTab" Header="Library">
+                    <ContentControl x:Name="LibraryHost"/>
+                </TabItem>
+            </TabControl>
+
+            <!-- Drag to resize the top area vs the transcript -->
+            <GridSplitter Grid.Row="2" Height="18" Margin="0,4,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Center" ResizeDirection="Rows"
+                          ResizeBehavior="PreviousAndNext" Background="Transparent" Cursor="SizeNS" Focusable="False"
+                          ToolTip="Drag to resize">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="Transparent">
+                            <Border Width="44" Height="4" CornerRadius="2" Background="{DynamicResource Line}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
+
+            <Grid Grid.Row="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="360"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Transcript log -->
+                <DockPanel Grid.Column="0">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Button DockPanel.Dock="Right" Content="Clear" MinWidth="0" Margin="6,0,0,0" Padding="10,2" Click="OnClearTranscriptView"
+                                ToolTip="Clear this pane (nothing is deleted: the transcript stays in the Files list or the Library)"/>
+                        <Button DockPanel.Dock="Right" Content="Copy" MinWidth="0" Margin="0" Padding="10,2" Click="OnCopyTranscript"/>
+                        <Button DockPanel.Dock="Right" Content="⧉ Feed" MinWidth="0" Margin="0,0,6,0" Padding="10,2" Click="OnOpenFeed"
+                                ToolTip="Pop out a clean, chat-style live feed (Ctrl+Shift+F): full screen, snap to a side, or put it on another monitor"/>
+                        <Button DockPanel.Dock="Right" Content="Summary…" MinWidth="0" Margin="0,0,6,0" Padding="10,2" Click="OnSummary"
+                                ToolTip="Key points, action items, decisions and questions — export in every format"/>
+                        <Button DockPanel.Dock="Right" Content="Export…" MinWidth="0" Margin="0,0,6,0" Padding="10,2" Click="OnExportTranscript"
+                                ToolTip="Save this transcript as Word, PDF, text, subtitles or JSON"/>
+                        <TextBlock x:Name="TranscriptTitle" Style="{StaticResource Label}" Text="TRANSCRIPT" VerticalAlignment="Bottom"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+                    <ListBox x:Name="TranscriptList" SelectionMode="Extended" ItemTemplate="{StaticResource TranscriptLineTemplate}" ContextMenuOpening="OnTranscriptMenuOpening"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.ScrollUnit="Pixel"
+                             HorizontalContentAlignment="Stretch">
+                        <ListBox.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem x:Name="AssignMenu" Header="Assign selected lines to"/>
+                                <MenuItem Header="Copy selected lines" Click="OnCopySelectedLines"/>
+                                <MenuItem Header="Copy whole transcript" Click="OnCopyTranscript"/>
+                                <MenuItem Header="Select all lines" Click="OnSelectAllLines" InputGestureText="Ctrl+A"/>
+                                <Separator/>
+                                <MenuItem Header="Summary…" Click="OnSummary"/>
+                                <MenuItem Header="Export…" Click="OnExportTranscript"/>
+                                <Separator/>
+                                <MenuItem Header="Clear this pane" Click="OnClearTranscriptView"/>
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
+                    </ListBox>
+                </DockPanel>
+
+                <!-- Speakers -->
+                <DockPanel Grid.Column="2">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Button DockPanel.Dock="Right" Content="Voice library…" MinWidth="0" Margin="0" Padding="10,2" Click="OnVoiceLibrary"/>
+                        <Button DockPanel.Dock="Right" x:Name="ReanalyseButton" Content="Re-analyse…" MinWidth="0" Margin="0,0,6,0" Padding="10,2"
+                                IsEnabled="False" Click="OnReanalyseSpeakers"
+                                ToolTip="Detect the speakers again from the audio (optionally matching them against your voice library)"/>
+                        <TextBlock Style="{StaticResource Label}" Text="SPEAKERS" VerticalAlignment="Bottom"/>
+                    </DockPanel>
+                    <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Button x:Name="AddSpeakerButton" Content="+ Add speaker" MinWidth="0" Margin="0,0,6,6" IsEnabled="False" Click="OnAddSpeaker"
+                                ToolTip="Add a person the detector missed, then pick them on the lines they spoke"/>
+                        <Button Grid.Column="1" x:Name="NameSelectedButton" Content="Name selected…" MinWidth="0" Margin="0,0,6,6" IsEnabled="False"
+                                Click="OnNameSelectedSpeakers" ToolTip="Give every selected speaker card the same name and sex (Ctrl/Shift+click cards to select)"/>
+                        <Button Grid.Column="2" x:Name="MergeButton" Content="Merge selected" MinWidth="0" Margin="0,0,0,6" IsEnabled="False"
+                                Click="OnMergeSpeakers" ToolTip="Combine the selected speakers into one (their lines are reassigned)"/>
+                        <Button Grid.Row="1" Grid.ColumnSpan="3" x:Name="SaveSpeakersButton" Style="{StaticResource PrimaryButton}" Margin="0"
+                                Content="Save changes &amp; update files" IsEnabled="False" Click="OnSaveSpeakers"
+                                ToolTip="Rewrites this file's transcripts with these names and remembers the voices you ticked"/>
+                    </Grid>
+                    <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="2">
+                        <Grid>
+                            <TextBlock x:Name="SpeakersHint" Margin="14" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
+                                       Text="Tick “Identify speakers”, transcribe a file, then select it here to name each voice."/>
+                                <ListBox x:Name="SpeakersList" Margin="8,8,8,0" SelectionMode="Extended" Background="Transparent" BorderThickness="0"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.ScrollUnit="Pixel"
+                                         HorizontalContentAlignment="Stretch" SelectionChanged="OnSpeakerSelectionChanged">
+                                    <ListBox.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Name selected speakers…" Click="OnNameSelectedSpeakers"/>
+                                            <MenuItem Header="Merge selected into one speaker" Click="OnMergeSpeakers"/>
+                                            <Separator/>
+                                            <MenuItem Header="Re-analyse speakers…" Click="OnReanalyseSpeakers"/>
+                                            <MenuItem Header="+ Add speaker" Click="OnAddSpeaker"/>
+                                            <MenuItem Header="Voice library…" Click="OnVoiceLibrary"/>
+                                        </ContextMenu>
+                                    </ListBox.ContextMenu>
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <ContentPresenter/>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="2" Padding="10,8" Margin="0,0,0,8" ToolTip="Ctrl/Shift+click to select several speakers">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="{DynamicResource Input}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+                                                        <Setter Property="BorderThickness" Value="1"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource Selection}"/>
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel>
+                                                    <DockPanel>
+                                                        <Button DockPanel.Dock="Right" Content="✕" MinWidth="0" Margin="4,0,0,0" Padding="7,1" FontSize="11"
+                                                                Tag="{Binding}" Click="OnRemoveSpeaker" ToolTip="Remove this speaker (their lines become unassigned)"/>
+                                                        <Button DockPanel.Dock="Right" MinWidth="0" Margin="0" Padding="8,1" FontSize="11"
+                                                                Tag="{Binding}" Click="OnPlayClip" IsEnabled="{Binding HasClip}">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                                    <Setter Property="Content" Value="▶ Play"/>
+                                                                    <Setter Property="ToolTip" Value="Hear a few seconds of this voice"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                                            <Setter Property="Content" Value="■ Stop"/>
+                                                                            <Setter Property="ToolTip" Value="Stop"/>
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                        </Button>
+                                                        <Ellipse Width="10" Height="10" Fill="{Binding Color}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Details}" FontSize="11" Foreground="{DynamicResource Muted}"
+                                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    </DockPanel>
+                                                    <Grid Margin="0,7,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="8"/>
+                                                            <ColumnDefinition Width="112"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <ComboBox IsEditable="True" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                                  ItemsSource="{Binding Names, Source={x:Static svc:VoiceLibrary.Shared}}"
+                                                                  ToolTip="Type a name, or pick someone from your voice library"/>
+                                                        <TextBlock Text="Name, e.g. Anna" IsHitTestVisible="False" Margin="8,0,0,0"
+                                                                   VerticalAlignment="Center" Foreground="{DynamicResource Muted}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Name}" Value="">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <ComboBox Grid.Column="2" ItemsSource="{x:Static svc:Sexes.All}" SelectedItem="{Binding Sex}"/>
+                                                    </Grid>
+                                                    <DockPanel Margin="0,7,0,0">
+                                                        <CheckBox Content="Remember this voice" IsChecked="{Binding Remember}" FontSize="12"/>
+                                                        <Grid HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Recognized}" Foreground="{DynamicResource Accent}" FontSize="11"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding MatchHint}" Foreground="{DynamicResource Muted}" FontSize="11"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="Closest voice in your library. It was below the recognition threshold — pick the name from the list if it's right.">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding Recognized}" Value="{x:Null}">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Grid>
+                                                    </DockPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                        </Grid>
+                    </Border>
+                </DockPanel>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>

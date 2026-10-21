@@ -1,0 +1,545 @@
+<Window x:Class="WhisperDesk.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings — WhisperDesk" Height="720" Width="860" MinHeight="420" MinWidth="680"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="Assets/app.ico"
+        FontFamily="Segoe UI" FontSize="13" Background="{DynamicResource Bg}" Foreground="{DynamicResource Fg}"
+        SourceInitialized="OnSourceInitialized">
+    <Window.Resources>
+        <Style x:Key="Section" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,18,0,8"/>
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,2,0,10"/>
+        </Style>
+        <Style x:Key="Field" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+        </Style>
+        <!-- Settings sections: navigation list on the left, the selected section on the right -->
+        <Style x:Key="SideTabs" TargetType="TabControl">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="190"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0" Padding="0,10,0,0">
+                                <StackPanel IsItemsHost="True"/>
+                            </Border>
+                            <ContentPresenter Grid.Column="1" ContentSource="SelectedContent"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Left navigation for the settings sections -->
+        <Style x:Key="NavTab" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource Fg}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="bd" Padding="16,9,24,9" Margin="0,1" BorderThickness="3,0,0,0" BorderBrush="Transparent" Background="Transparent" Cursor="Hand">
+                            <ContentPresenter ContentSource="Header" TextElement.FontSize="13"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hover}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Selection}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Num" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Width" Value="90"/>
+            <Setter Property="Padding" Value="5,3"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="16,10">
+            <DockPanel>
+                <Button Content="Reset to defaults" Click="OnReset"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Cancel" IsCancel="True" Click="OnCancel"/>
+                    <Button Content="Save" Style="{StaticResource PrimaryButton}" Margin="0" IsDefault="True" Click="OnSave"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <TabControl x:Name="Tabs" Style="{StaticResource SideTabs}" ItemContainerStyle="{StaticResource NavTab}">
+                <TabItem Header="General">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+<!-- Appearance -->
+                <TextBlock Style="{StaticResource Section}" Text="Appearance"/>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Field}" Text="Brand accent colour"/>
+                    <StackPanel Grid.Column="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Border x:Name="AccentSwatch" Width="24" Height="24" CornerRadius="2" BorderBrush="{DynamicResource Line}" BorderThickness="1" Margin="0,0,8,0"/>
+                            <TextBox x:Name="AccentBox" Style="{StaticResource Num}" Text="{Binding AccentColor, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnAccentChanged"/>
+                            <Button Content="darkcipher0x teal" MinWidth="0" Margin="8,0,0,0" Padding="9,3" Click="OnResetAccent"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Hint}" Text="Hex RRGGBB. Used for buttons, highlights and the header. Light mode automatically uses a deeper shade for readability. Default 36D2CB."/>
+                    </StackPanel>
+                </Grid>
+
+                                <CheckBox Content="Show the launch screen when WhisperDesk starts" IsChecked="{Binding ShowSplash}" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Performance">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+<!-- Performance & accuracy -->
+                <TextBlock Style="{StaticResource Section}" Text="Performance &amp; accuracy"/>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource Field}" Text="Performance mode"/>
+                    <StackPanel Grid.Column="1">
+                        <ComboBox x:Name="PerformanceBox" Width="230" HorizontalAlignment="Left" SelectedValuePath="Tag" SelectedValue="{Binding PerformanceMode}">
+                            <ComboBoxItem Content="Light: leave the PC free" Tag="Light"/>
+                            <ComboBoxItem Content="Balanced (recommended)" Tag="Balanced"/>
+                            <ComboBoxItem Content="Maximum: fastest" Tag="Maximum"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource Hint}" Text="How much of the CPU transcription and speaker analysis may use. Light runs speaker analysis after transcription and keeps the app and PC snappy while you live-transcribe, play recordings or work in other apps. Applies to the next job."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Style="{StaticResource Field}" Text="Skip silence"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <CheckBox Content="Only transcribe where someone is speaking" IsChecked="{Binding SkipSilence}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Uses voice activity detection so silence, hold music and noise never reach Whisper. Stops invented “Thank you.” lines and repeat loops, and is faster. Recommended."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Style="{StaticResource Field}" Text="Hallucination filter"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1">
+                        <CheckBox Content="Remove typical Whisper hallucinations and repeats" IsChecked="{Binding FilterHallucinations}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Drops quiet or low-confidence “Thank you.”, “Thanks for watching”, [MUSIC] and the third and later copies of the same line in a row. Real, clearly spoken thank-yous are kept."/>
+                    </StackPanel>
+                </Grid>
+
+                
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Transcription">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+<!-- Transcription -->
+                <TextBlock Style="{StaticResource Section}" Text="Transcription"/>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Field}" Text="Hardware"/>
+                    <StackPanel Grid.Column="1">
+                        <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Hardware}" Width="180" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="Auto" Tag="Auto"/>
+                            <ComboBoxItem Content="NPU" Tag="NPU"/>
+                            <ComboBoxItem Content="GPU (Vulkan)" Tag="GPU"/>
+                            <ComboBoxItem Content="CPU" Tag="CPU"/>
+                        </ComboBox>
+                        <TextBlock x:Name="HardwareDetected" Style="{StaticResource Hint}" Text="Checking for an NPU…"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Auto picks the fastest option on this PC: the NPU, then the GPU, then the CPU. All of them run on this PC; audio never leaves it. Same as HARDWARE in the main window."/>
+                    </StackPanel>
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource Field}" Text="CPU threads (0 = auto)"/>
+                    <StackPanel Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding Threads}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Used when running on the CPU, and for parts of the GPU pipeline."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Style="{StaticResource Field}" Text="GPU device index"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding GpuDevice}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="0 = first Vulkan GPU. Change only if you have several graphics cards."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Style="{StaticResource Field}" Text="Flash attention"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1">
+                        <CheckBox Content="Enable (can be faster on some GPUs)" IsChecked="{Binding FlashAttention}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Experimental. Turn off again if transcripts look wrong."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="3" Style="{StaticResource Field}" Text="Context between segments"/>
+                    <StackPanel Grid.Row="3" Grid.Column="1">
+                        <CheckBox Content="Don't use previous text as context" IsChecked="{Binding NoContext}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Turn on if a transcript gets stuck repeating the same sentence."/>
+                    </StackPanel>
+                </Grid>
+                <TextBlock Style="{StaticResource Field}" Text="Vocabulary hint (names, jargon, spelling)" Margin="0,4,0,4"/>
+                <TextBox Text="{Binding InitialPrompt}" Height="58" TextWrapping="Wrap" AcceptsReturn="True" Padding="6,4"
+                         VerticalScrollBarVisibility="Auto"/>
+                <TextBlock Style="{StaticResource Hint}" Text="Example: “Anna, Erik, darkcipher0x, Voicemeeter, Kubernetes.” Helps Whisper spell names and terms correctly."/>
+
+                
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Speakers">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+<!-- Speakers -->
+                <TextBlock Style="{StaticResource Section}" Text="Speakers"/>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Field}" Text="Voiceprint hardware"/>
+                    <StackPanel Grid.Column="1">
+                        <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding SpeakerHardware}" Width="220" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="Auto (NPU when available)" Tag="Auto"/>
+                            <ComboBoxItem Content="CPU only" Tag="CPU"/>
+                        </ComboBox>
+                        <TextBlock x:Name="SpeakerHardwareStatus" Style="{StaticResource Hint}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Voiceprints recognise speakers (also in live sessions). On the NPU they are used only after matching the CPU's result, so saved voices keep being recognised. Finding who spoke when (diarization) and voice detection always run on the CPU: the speaker library they use can't run on the NPU."/>
+                    </StackPanel>
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <TextBlock Grid.Row="5" Style="{StaticResource Field}" Text="Merge similar voices"/>
+                    <StackPanel Grid.Row="5" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding SpeakerMergeSimilarity}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="After detection, voices this similar (0–1) are treated as the same person. Lower (e.g. 0.5) merges more; higher (e.g. 0.7) keeps more separate speakers. Default 0.6."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="6" Style="{StaticResource Field}" Text="Max speakers (Auto)"/>
+                    <StackPanel Grid.Row="6" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding MaxAutoSpeakers}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Upper limit when the speaker count is Auto: the closest voices are merged until it fits. Default 10."/>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Field}" Text="Separation sensitivity"/>
+                    <StackPanel Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding ClusterThreshold}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="For “Auto” speaker count. Lower (e.g. 0.4) splits more voices apart; higher (e.g. 0.7) merges similar voices. Default 0.5."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Style="{StaticResource Field}" Text="Voice library match"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding VoiceMatchThreshold}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="How similar a voice must be to a saved voice (0–1) to fill in their name. Raise it if the wrong names appear. Default 0.5."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Style="{StaticResource Field}" Text="Min speech / silence (s)"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox Style="{StaticResource Num}" Text="{Binding MinSpeechSeconds}"/>
+                            <TextBlock Text="  /  " VerticalAlignment="Center"/>
+                            <TextBox Style="{StaticResource Num}" Text="{Binding MinSilenceSeconds}"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Hint}" Text="Shortest speech turn kept, and shortest pause that splits turns. Defaults 0.3 / 0.5."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="3" Style="{StaticResource Field}" Text="Suggest male below (Hz)"/>
+                    <StackPanel Grid.Row="3" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding MaleBelowHz}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Voice pitch under this suggests Male. Default 158."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="4" Style="{StaticResource Field}" Text="Suggest female above (Hz)"/>
+                    <StackPanel Grid.Row="4" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding FemaleAboveHz}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Voice pitch over this suggests Female; in between stays Unspecified. Default 168. Suggestions are always editable."/>
+                    </StackPanel>
+                </Grid>
+
+                
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Output &amp; subtitles">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+<!-- Output -->
+                <TextBlock Style="{StaticResource Section}" Text="Output"/>
+                <CheckBox Content="Include sex in speaker tags, e.g. “Anna (Female):”" IsChecked="{Binding IncludeSexInTags}" Margin="0,0,0,8"/>
+                <CheckBox Content="Show speaker names in SRT / VTT subtitles" IsChecked="{Binding SpeakerInSubtitles}" Margin="0,0,0,8"/>
+                <CheckBox Content="Always add timestamps to TXT (even without speakers)" IsChecked="{Binding AlwaysTimestampTxt}" Margin="0,0,0,4"/>
+
+                <!-- Burn-in -->
+                <TextBlock Style="{StaticResource Section}" Text="Burned-in subtitles (videos)"/>
+
+                <!-- Live preview -->
+                <Border x:Name="BurnPreviewFrame" Height="92" CornerRadius="3" Margin="0,0,0,12" ClipToBounds="True">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#3D5A80" Offset="0"/>
+                            <GradientStop Color="#98C1D9" Offset="0.55"/>
+                            <GradientStop Color="#EE6C4D" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border x:Name="BurnPreviewBox" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,10" Padding="8,2" CornerRadius="2">
+                        <TextBlock x:Name="BurnPreviewText" Text="Anna (Female): This is how your subtitles will look."/>
+                    </Border>
+                </Border>
+
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource Field}" Text="Font"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <ComboBox x:Name="BurnFontBox" Width="230" SelectedItem="{Binding BurnFont}" MaxDropDownHeight="320"
+                                  SelectionChanged="OnBurnStyleChanged"/>
+                        <CheckBox Content="Bold" IsChecked="{Binding BurnBold}" Margin="14,0,0,0" VerticalAlignment="Center" Click="OnBurnStyleChanged"/>
+                        <CheckBox Content="Italic" IsChecked="{Binding BurnItalic}" Margin="12,0,0,0" VerticalAlignment="Center" Click="OnBurnStyleChanged"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="1" Style="{StaticResource Field}" Text="Font size"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding BurnFontSize, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnBurnStyleChanged"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Relative to a 288-pixel-tall canvas, so it scales with the video. Default 22."/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="2" Style="{StaticResource Field}" Text="Text colour"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Border x:Name="TextSwatch" Width="24" Height="24" CornerRadius="2" BorderBrush="{DynamicResource Line}" BorderThickness="1" Margin="0,0,8,0"/>
+                        <TextBox Style="{StaticResource Num}" Text="{Binding BurnTextColor, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnBurnStyleChanged"
+                                 ToolTip="Hex colour RRGGBB, e.g. FFFFFF (white), FFE600 (yellow)"/>
+                        <TextBlock Text="  hex RRGGBB" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" FontSize="11.5"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="3" Style="{StaticResource Field}" Text="Style"/>
+                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <RadioButton x:Name="StyleOutline" Content="Outlined text" GroupName="burnstyle" Checked="OnBurnStyleRadio"/>
+                        <RadioButton x:Name="StyleBox" Content="Text on a box" GroupName="burnstyle" Margin="18,0,0,0" Checked="OnBurnStyleRadio"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="4" Style="{StaticResource Field}" Text="Outline / box colour"/>
+                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Border x:Name="OutlineSwatch" Width="24" Height="24" CornerRadius="2" BorderBrush="{DynamicResource Line}" BorderThickness="1" Margin="0,0,8,0"/>
+                        <TextBox Style="{StaticResource Num}" Text="{Binding BurnOutlineColor, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnBurnStyleChanged"/>
+                        <TextBlock Text="  thickness" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="10,0,6,0"/>
+                        <TextBox Style="{StaticResource Num}" Width="60" Text="{Binding BurnOutline, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnBurnStyleChanged"
+                                 ToolTip="Outline thickness (outlined style). Default 2."/>
+                        <TextBlock Text="  box opacity %" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="10,0,6,0"/>
+                        <TextBox Style="{StaticResource Num}" Width="60" Text="{Binding BurnBoxOpacity, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnBurnStyleChanged"
+                                 ToolTip="Box style only. 0 = invisible, 100 = solid. Default 60."/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="5" Style="{StaticResource Field}" Text="Position"/>
+                    <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <ComboBox x:Name="BurnPositionBox" Width="120" SelectedItem="{Binding BurnPosition}" SelectionChanged="OnBurnStyleChanged"/>
+                        <TextBlock Text="  margin" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="10,0,6,0"/>
+                        <TextBox Style="{StaticResource Num}" Width="60" Text="{Binding BurnMargin}" ToolTip="Distance from the edge of the picture. Default 28."/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="6" Style="{StaticResource Field}" Text="Video quality (QP/CRF)"/>
+                    <StackPanel Grid.Row="6" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding BurnQuality}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Lower is better quality and a bigger file. 18–24 is typical. Default 20."/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="7" Style="{StaticResource Field}" Text="Encoder"/>
+                    <StackPanel Grid.Row="7" Grid.Column="1">
+                        <CheckBox Content="Use the GPU video encoder when available" IsChecked="{Binding BurnUseGpu}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="AMD AMF / NVIDIA NVENC / Intel QSV, falling back to x264 on the CPU."/>
+                    </StackPanel>
+                </Grid>
+
+                
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Live">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+<!-- Live -->
+                <TextBlock Style="{StaticResource Section}" Text="Live transcription"/>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <TextBlock Grid.Row="2" Style="{StaticResource Field}" Text="Same-person threshold"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding LiveSameSpeakerThreshold}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="How alike a new line's voice must be to someone already heard to count as them. Raise it if different people get merged; lower it if one person keeps becoming a new speaker. Default 0.45."/>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Field}" Text="Pause that ends a line (ms)"/>
+                    <StackPanel Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding LiveSilenceMs}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Shorter = lines appear sooner but may cut sentences. Default 600."/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Style="{StaticResource Field}" Text="Longest line (seconds)"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <TextBox Style="{StaticResource Num}" Text="{Binding LiveMaxUtteranceSeconds}"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Forces a line break when someone talks without pausing. Default 15."/>
+                    </StackPanel>
+                </Grid>
+
+                
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Summary &amp; AI">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+<!-- Summary report -->
+                <TextBlock Style="{StaticResource Section}" Text="Summary report"/>
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,6"
+                           Text="Every summary includes a written report. Offline it is built from the transcript's statistics. For a fuller report written in proper prose, install Ollama (ollama.com), run “ollama pull llama3.1:8b”, and tick below. The AI runs on this PC (your GPU) — the transcript is not sent anywhere."/>
+                <CheckBox Content="Write the report with a local AI model (Ollama)" IsChecked="{Binding AiSummaryEnabled}" Margin="0,0,0,6"/>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="180"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding AiUrl}" Padding="5,4" ToolTip="Ollama address (default http://localhost:11434)"/>
+                    <TextBox Grid.Column="2" Text="{Binding AiModel}" Padding="5,4" ToolTip="Model name, e.g. llama3.1:8b, qwen2.5:14b, mistral"/>
+                    <Button Grid.Column="4" x:Name="AiTestButton" Content="Test" MinWidth="0" Margin="0" Click="OnTestAi"/>
+                </Grid>
+                <TextBlock x:Name="AiTestResult" Style="{StaticResource Hint}" TextWrapping="Wrap"/>
+                <CheckBox Content="Allow sending transcripts to an AI server on another computer" IsChecked="{Binding AllowRemoteAi}" Margin="0,2,0,2"/>
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                           Text="Off by default. Only needed when the address above is not this PC (localhost). With it on, the full transcript is sent to that computer for each summary, outside WhisperDesk's local-only boundary. Internet addresses need https://; plain http:// is accepted only for this PC and your local network."/>
+                <DockPanel Margin="0,4,0,4">
+                    <Button DockPanel.Dock="Right" Content="Reset to default" MinWidth="0" Margin="0" Padding="8,2" Click="OnResetPrompt"/>
+                    <TextBlock Style="{StaticResource Field}" VerticalAlignment="Bottom"
+                               Text="Report prompt — placeholders: {title} {date} {duration} {speakers} {transcript}"/>
+                </DockPanel>
+                <TextBox Text="{Binding AiPrompt}" AcceptsReturn="True" TextWrapping="Wrap" Height="220" Padding="6,4"
+                         VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource MonoFont}" FontSize="12"/>
+
+                
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Storage &amp; tools">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+<!-- Tools -->
+                <TextBlock Style="{StaticResource Section}" Text="Tools &amp; storage"/>
+                <TextBlock Style="{StaticResource Field}" Text="FFmpeg location (leave empty to find automatically)" Margin="0,0,0,4"/>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Browse…" MinWidth="0" Margin="6,0,0,0" Click="OnBrowseFfmpeg"/>
+                    <TextBox Text="{Binding FfmpegPath}" Padding="5,4"/>
+                </DockPanel>
+                <TextBlock x:Name="FfmpegFound" Style="{StaticResource Hint}"/>
+                <TextBlock Style="{StaticResource Field}" Text="Recordings library location (empty = %LOCALAPPDATA%\WhisperDesk\Library, not synced)" Margin="0,4,0,4"/>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" x:Name="MoveLibraryButton" Content="Move library to…" MinWidth="0" Margin="6,0,0,0" Click="OnMoveLibrary"
+                            ToolTip="Copy every recording to another folder, check each copy, switch to it, then remove the originals"/>
+                    <Button DockPanel.Dock="Right" Content="Browse…" MinWidth="0" Margin="6,0,0,0" Click="OnBrowseLibrary"/>
+                    <TextBox Text="{Binding LibraryPath}" Padding="5,4" LostFocus="OnLibraryPathEdited"/>
+                </DockPanel>
+                <TextBlock x:Name="LibraryInfo" Style="{StaticResource Hint}" TextWrapping="Wrap"/>
+                <Border x:Name="LibraryWarningBox" BorderBrush="#E8A33D" BorderThickness="1" Padding="10,8" Margin="0,2,0,8" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock x:Name="LibraryWarning" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#E8A33D"/>
+                        <Button x:Name="MoveLibraryLocalButton" Content="Move library to a local folder" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                Click="OnMoveLibraryLocal"/>
+                    </StackPanel>
+                </Border>
+                <TextBlock Style="{StaticResource Field}" Text="Models folder (empty = %LOCALAPPDATA%\WhisperDesk\models)" Margin="0,4,0,4"/>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" x:Name="MoveModelsButton" Content="Move models to…" MinWidth="0" Margin="6,0,0,0" Click="OnMoveModels"
+                            ToolTip="Copy every downloaded model to another folder (or drive), switch to it, and delete the old copies"/>
+                    <Button DockPanel.Dock="Right" Content="Browse…" MinWidth="0" Margin="6,0,0,0" Click="OnBrowseModels"/>
+                    <TextBox Text="{Binding ModelsPath}" Padding="5,4"/>
+                </DockPanel>
+                <TextBlock x:Name="ModelsInfo" Style="{StaticResource Hint}" TextWrapping="Wrap"/>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <Button Content="Open models folder" Click="OnOpenModels"/>
+                    <Button Content="Open settings folder" Click="OnOpenSettingsFolder"/>
+                </StackPanel>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Security &amp; privacy">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+                <TextBlock Style="{StaticResource Section}" Text="Security &amp; privacy"/>
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" Text="WhisperDesk works on this PC. Nothing leaves it unless you switch on or ask for something that needs the network; each such feature is listed below. No telemetry, analytics or crash reports are sent to anyone."/>
+                <TextBlock x:Name="CloudWarning" TextWrapping="Wrap" Margin="0,0,0,10" FontWeight="SemiBold" Foreground="#E8A33D" Visibility="Collapsed"/>
+
+                <!-- Encryption -->
+                <TextBlock Style="{StaticResource Section}" Text="Encryption"/>
+                <TextBlock x:Name="EncryptionStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <TextBlock x:Name="EncryptionDetail" Style="{StaticResource Hint}"/>
+                <WrapPanel Margin="0,0,0,6">
+                    <Button x:Name="EncryptButton" Click="OnEncrypt"/>
+                    <Button x:Name="ChangePassButton" Content="Change passphrase…" Click="OnChangePassphrase"/>
+                    <Button x:Name="RecoveryButton" Content="New recovery key…" Click="OnNewRecovery"/>
+                    <Button x:Name="LockNowButton" Content="Lock now" Click="OnLockNow"/>
+                </WrapPanel>
+
+                <!-- Lock and sign-in -->
+                <TextBlock Style="{StaticResource Section}" Text="Lock and sign-in"/>
+                <StackPanel x:Name="LockPanel">
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Field}" Text="Lock after inactivity"/>
+                        <ComboBox x:Name="AutoLockBox" Grid.Column="1" Width="200" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="Never" Tag="0"/>
+                            <ComboBoxItem Content="1 minute" Tag="1"/>
+                            <ComboBoxItem Content="5 minutes" Tag="5"/>
+                            <ComboBoxItem Content="10 minutes" Tag="10"/>
+                            <ComboBoxItem Content="15 minutes" Tag="15"/>
+                            <ComboBoxItem Content="30 minutes" Tag="30"/>
+                            <ComboBoxItem Content="1 hour" Tag="60"/>
+                        </ComboBox>
+                    </Grid>
+                    <CheckBox x:Name="LockWindowsBox" Content="Lock when Windows locks or the PC goes to sleep" Margin="0,2"/>
+                    <CheckBox x:Name="LockMinimizeBox" Content="Lock when WhisperDesk is minimised" Margin="0,2"/>
+                    <CheckBox x:Name="ClearClipboardBox" Content="Clear text WhisperDesk copied to the clipboard when it locks" Margin="0,2,0,8"/>
+                    <TextBlock x:Name="TotpStatus" TextWrapping="Wrap" Margin="0,4,0,4"/>
+                    <WrapPanel Margin="0,0,0,4">
+                        <Button x:Name="TotpButton" Click="OnTotp"/>
+                        <Button x:Name="HelloButton" Click="OnHello"/>
+                    </WrapPanel>
+                    <TextBlock x:Name="HelloStatus" Style="{StaticResource Hint}"/>
+                </StackPanel>
+                <TextBlock x:Name="LockOffHint" Style="{StaticResource Hint}" Text="The lock screen, auto-lock and two-factor sign-in come with encryption: a lock screen alone would not protect files on disk."/>
+
+                <!-- Network -->
+                <TextBlock Style="{StaticResource Section}" Text="Network"/>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Field}" Text="Model downloads"/>
+                    <StackPanel Grid.Column="1">
+                        <ComboBox x:Name="ModelPolicyBox" Width="260" HorizontalAlignment="Left" SelectedValuePath="Tag" SelectedValue="{Binding ModelDownloadPolicy}">
+                            <ComboBoxItem Content="Ask each time (default)" Tag="Ask"/>
+                            <ComboBoxItem Content="Allow without asking" Tag="Allow"/>
+                            <ComboBoxItem Content="Never (offline only)" Tag="Block"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource Hint}" Text="Speech, speaker and NPU models come from Hugging Face and GitHub over HTTPS, pinned to fixed versions and checked with SHA-256. Only the file request is visible to them. With “Never”, import models yourself (Tools → Models)."/>
+                    </StackPanel>
+                </Grid>
+                <TextBlock x:Name="NetworkFeatures" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                <WrapPanel Margin="0,0,0,6">
+                    <Button Content="Network activity…" Click="OnNetworkActivity"/>
+                    <Button Content="Add-on permissions…" Click="OnAddonPermissions"/>
+                </WrapPanel>
+                <TextBlock Style="{StaticResource Hint}" Text="There are no automatic update or model checks. New versions are downloaded by you from the website; release files come with SHA-256 checksums."/>
+
+                <!-- Outside the vault -->
+                <TextBlock Style="{StaticResource Section}" Text="Where your data can still be read"/>
+                <TextBlock x:Name="PlainOutside" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                <Expander Header="What WhisperDesk can't protect against" Margin="0,4,0,10">
+                    <TextBlock TextWrapping="Wrap" Margin="12,6,0,0" FontSize="12" Text="• Malware running under your Windows account while WhisperDesk is unlocked (it can read the screen, memory and keystrokes).&#x0a;• Someone who has both your passphrase and your recovery key.&#x0a;• A weak passphrase, guessed offline from a stolen copy of the library.&#x0a;• Files you export or share, and services you connect (add-ons, webhooks, a remote AI server).&#x0a;• A sync service uploading your library: contents stay encrypted, but the number, sizes and times of files are visible.&#x0a;• Weaknesses in Windows, drivers, FFmpeg, whisper.cpp or ONNX Runtime. Keep them updated.&#x0a;For the operating system, swap and hibernation files, use BitLocker as well."/>
+                </Expander>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <Button Content="Read the privacy &amp; security statement" Click="OnPrivacyPage"/>
+                    <Button Content="Open the data folder" Click="OnOpenSettingsFolder"/>
+                </StackPanel>
+                <TextBlock Style="{StaticResource Hint}" Text="Voiceprints are biometric data: get consent before saving someone's voice, and remove voices you no longer need in Tools → Voice library. Backups can be encrypted with a password (File → Backup)."/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+    </DockPanel>
+</Window>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MSIX manifest for the Microsoft Store package. build.ps1 fills the $...$ values:
+       $IDENTITY_NAME$, $PUBLISHER$, $PUBLISHER_DISPLAY_NAME$  from Packaging\store-identity.json (Partner Center → Product identity)
+       $VERSION$                                                 from <Version> in WhisperDesk.csproj, as a.b.c.0 -->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
+  IgnorableNamespaces="uap rescap desktop6">
+
+  <Identity Name="$IDENTITY_NAME$" Publisher="$PUBLISHER$" Version="$VERSION$" ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>WhisperDesk</DisplayName>
+    <PublisherDisplayName>$PUBLISHER_DISPLAY_NAME$</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+    <Description>Private, on-device transcription and speaker intelligence.</Description>
+    <!-- WhisperDesk's data (library, voice library, settings, models) stays in the real %LOCALAPPDATA%\WhisperDesk, as with
+         the MSI, instead of a package-private copy that Windows deletes on uninstall. Recordings can be legal evidence, so
+         uninstalling or reinstalling the app must never delete them; it also lets the add-on sandbox and the encrypted
+         working folder see the same paths as WhisperDesk. Needs the unvirtualizedResources capability below. -->
+    <desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>
+    <desktop6:RegistryWriteVirtualization>disabled</desktop6:RegistryWriteVirtualization>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="WhisperDesk" Executable="WhisperDesk.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="WhisperDesk" Description="Private, on-device transcription and speaker intelligence."
+                          BackgroundColor="transparent"
+                          Square150x150Logo="Images\Square150x150Logo.png" Square44x44Logo="Images\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" Square71x71Logo="Images\SmallTile.png"
+                         Square310x310Logo="Images\LargeTile.png" ShortName="WhisperDesk" />
+        <uap:SplashScreen Image="Images\SplashScreen.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <!-- Double-clicking a shared .wdsession opens it in WhisperDesk's player (same as the MSI's association). -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="wdsession">
+            <uap:DisplayName>WhisperDesk session</uap:DisplayName>
+            <uap:Logo>Images\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="application/x-whisperdesk-session">.wdsession</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- Declared so the Store listing states them. WhisperDesk connects only when the user asks (model downloads, an AI
+         server, add-ons they enable); see Settings → Security & privacy → Network activity. -->
+    <Capability Name="internetClient" />
+    <!-- The live-captions add-on serves this PC (localhost); an Ollama server can be on the local network. -->
+    <Capability Name="privateNetworkClientServer" />
+    <!-- Desktop (Win32/WPF) app: Whisper, ONNX Runtime and Vulkan native code, the AppContainer add-on sandbox. -->
+    <rescap:Capability Name="runFullTrust" />
+    <!-- For desktop6:FileSystemWriteVirtualization=disabled above (data kept on uninstall). -->
+    <rescap:Capability Name="unvirtualizedResources" />
+    <!-- Live sessions record from the microphone (only while a session runs). -->
+    <DeviceCapability Name="microphone" />
+  </Capabilities>
+</Package>

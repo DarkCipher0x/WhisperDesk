@@ -1,0 +1,10 @@
+﻿{
+  "id": "sample.word-export",
+  "name": "Word export (sample)",
+  "author": "darkcipher0x",
+  "version": "1.1.0",
+  "description": "Saves every finished transcript as a Word document (.rtf) with bold speaker names, in a folder you choose.",
+  "entry": "SampleWordExport.dll",
+  "capabilities": [ "library.read", "files" ],
+  "networkHosts": []
+}

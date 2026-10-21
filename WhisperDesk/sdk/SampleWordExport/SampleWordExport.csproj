@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sample WhisperDesk add-on. Build it, then copy bin\Release\net8.0\SampleWordExport.dll and addon.json into a new
+       folder %LOCALAPPDATA%\WhisperDesk\addons\SampleWordExport\ and restart WhisperDesk. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The SDK contract ships next to this sample (sdk\WhisperDesk.Addons.dll).
+         Private=false: don't copy it to your output — WhisperDesk already has it. -->
+    <Reference Include="WhisperDesk.Addons">
+      <HintPath>..\WhisperDesk.Addons.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="addon.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
