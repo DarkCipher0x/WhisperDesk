@@ -74,6 +74,13 @@ To catch problems before Partner Center does, you can also run the **Windows App
 The package has been built and its contents checked, but it hasn't been installed on a test PC. These areas need checking in the steps above before the first submission:
 - **Add-on sandbox:** WhisperDesk starts add-ons in an AppContainer. From inside a package, Windows may give that child process the package identity.
 - **Microphone permission prompt:** packaged apps get a per-app microphone switch in Windows privacy settings.
+  Microsoft's 1.8.0 certification test failed here. Recording through WASAPI alone never shows Windows' prompt, so the
+  Store copy got `E_ACCESSDENIED` on Live → Start. The fix: `Services\MicrophoneAccess.cs` checks the capability first
+  and, while the prompt hasn't been answered, opens an audio-only `MediaCapture`, which is what shows the prompt. A
+  refusal now explains where to switch it on and offers to open Settings → Privacy & security → Microphone. To test
+  the prompt, use a Windows user or VM that has never run the package: press Start live and the prompt must appear.
+  To test a refusal, switch WhisperDesk off in that Settings page. Don't use Apps → Advanced options → Reset on a
+  PC that has a real library.
 - **Windows Hello sign-in**
 
 ## Differences from the MSI

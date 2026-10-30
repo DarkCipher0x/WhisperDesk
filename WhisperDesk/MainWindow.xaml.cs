@@ -720,13 +720,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Without FFmpeg, Windows' own decoders read the common formats; only burning subtitles into video needs FFmpeg.
         var ffmpeg = AudioDecoder.FindFfmpeg();
-        if (ffmpeg == null)
-        {
-            MessageBox.Show(this, "FFmpeg was not found.\n\nInstall it with:  winget install Gyan.FFmpeg\nor set its location in File → Settings.",
-                "WhisperDesk", MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (ffmpeg == null && BurnBox.IsChecked == true && work.Any(i => SubtitleBurner.IsVideo(i.FilePath)) &&
+            MessageBox.Show(this, "Burning subtitles into a video needs FFmpeg, which isn't installed, so videos will get subtitle files only.\n\n" +
+                                  AudioDecoder.FfmpegHint + "\n\nContinue without burning?",
+                            "WhisperDesk", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
             return;
-        }
 
         SaveSettings();
         _cts = new CancellationTokenSource();
@@ -795,7 +795,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task ProcessItemAsync(QueueItem item, string ffmpeg, TranscribeOptions options,
+    private async Task ProcessItemAsync(QueueItem item, string? ffmpeg, TranscribeOptions options,
         bool identify, int speakerCount, bool txt, bool srt, bool vtt, bool json, bool burn, Action<double> overall, CancellationToken ct)
     {
         item.State = ItemState.Working;
@@ -920,7 +920,7 @@ public partial class MainWindow : Window
             PublishFileTranscript(result, item.FilePath);
 
             var burned = "";
-            if (burn && item.TargetLibrary == null && SubtitleBurner.IsVideo(item.FilePath))
+            if (burn && ffmpeg != null && item.TargetLibrary == null && SubtitleBurner.IsVideo(item.FilePath))
             {
                 item.Status = "Burning subtitles into video…";
                 var encoder = await SubtitleBurner.BurnAsync(ffmpeg, item.FilePath, TranscriptWriter.ToSrt(result),
@@ -1232,7 +1232,7 @@ public partial class MainWindow : Window
 
     private async Task LearnVoicesAsync(TranscriptResult result, List<SpeakerInfo> speakers)
     {
-        var ffmpeg = AudioDecoder.FindFfmpeg() ?? throw new InvalidOperationException("FFmpeg not found.");
+        var ffmpeg = AudioDecoder.FindFfmpeg();
         await SpeakerModels.EnsureAsync(new Progress<string>(s => StatusText.Text = s), CancellationToken.None);
         var samples = await Task.Run(() => AudioDecoder.DecodeAsync(ffmpeg, result.MediaPath!, CancellationToken.None));
 
@@ -1425,8 +1425,16 @@ public partial class MainWindow : Window
         _cts = new CancellationTokenSource(); // blocks file transcription while we prepare
         SetBusy(true);
         LiveStartButton.IsEnabled = false;
+        var sessionStarted = false;
+        string? recording = null;
         try
         {
+            // Microphone permission and the device itself first: a refusal should take a second, not a model load.
+            if (!device.IsLoopback && await MicrophoneAccess.EnsureAsync() is { } denied)
+                throw new MicrophoneDeniedException(denied);
+            StatusText.Text = $"Opening {device.Name}…";
+            _audio.Open(device);
+
             var model = SelectedModel;
             await SpeakerModels.EnsureAsync(new Progress<string>(s => StatusText.Text = s), _cts.Token);
             await LoadEngineAsync(model, _cts.Token);
@@ -1436,7 +1444,6 @@ public partial class MainWindow : Window
                 _settings.InitialPrompt, NoContext: true);
 
             var started = DateTime.Now;
-            string? recording = null;
             if (LiveKeepAudioBox.IsChecked == true)
             {
                 recording = Path.Combine(LiveDir, $"live-{started:yyyyMMdd-HHmmss}.wav");
@@ -1451,6 +1458,7 @@ public partial class MainWindow : Window
                     foreach (TranscriptLine l in ev.NewItems) _addons.PublishLine(AddonManager.ToEvent(sessionId, true, l));
             };
             _addons.PublishSessionStarted(new SessionEvent(sessionId, true, $"Live · {device.Name}", started));
+            sessionStarted = true;
             // With encryption on, the key stays in memory until this session is saved, even if WhisperDesk locks meanwhile.
             _liveHold = Services.Security.Vault.IsEnabled ? Services.Security.Vault.Hold() : null;
             _live = new LiveSession(_engine, _speakerAnalyzer, _voices, options, SpeakersBox.IsChecked == true,
@@ -1461,7 +1469,7 @@ public partial class MainWindow : Window
             _autosave.Start();
             _audio.SamplesAvailable += _live.Feed;
             _audio.Stopped += OnAudioStopped;
-            _audio.Start(device);
+            _audio.StartRecording();
 
             ShowResult(_liveResult, live: true);
             LiveStopButton.IsEnabled = true;
@@ -1474,11 +1482,29 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Could not start live: " + ex.Message;
-            MessageBox.Show(this, ex.Message, "Live transcription", MessageBoxButton.OK, MessageBoxImage.Error);
             await CleanupLiveAsync();
             DeleteRecovery();
             ReleaseLiveHold();
+            // Nothing was recorded: no empty WAV left behind, and add-ons see the session end that they saw start.
+            if (recording != null) try { File.Delete(recording); } catch { }
+            if (sessionStarted)
+            {
+                _addons.PublishSessionStopped(new SessionEvent(_liveSessionId, true, $"Live · {device.Name}", DateTime.Now));
+                _liveResult = null; // the empty result of this attempt; an earlier session's result is kept when we fail sooner
+            }
+
+            if (!device.IsLoopback && MicrophoneAccess.IsAccessDenied(ex))
+            {
+                StatusText.Text = "Could not start live: Windows isn't letting WhisperDesk use the microphone.";
+                var text = ex is MicrophoneDeniedException ? ex.Message : MicrophoneAccess.DeniedMessage();
+                if (MessageBox.Show(this, text, "Microphone access", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                    MicrophoneAccess.OpenSettings();
+            }
+            else
+            {
+                StatusText.Text = "Could not start live: " + ex.Message;
+                MessageBox.Show(this, ex.Message, "Live transcription", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         finally
         {

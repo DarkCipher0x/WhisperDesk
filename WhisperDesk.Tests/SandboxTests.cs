@@ -43,6 +43,9 @@ public class SandboxTests(ITestOutputHelper output) : IDisposable
 
     private static string WhisperDeskExe()
     {
+        // WD_TEST_SANDBOX_EXE: an installed copy instead, e.g. the Store package's exe when these tests run inside the
+        // package's context (Invoke-CommandInDesktopPackage) to check the sandbox works from an MSIX.
+        if (Environment.GetEnvironmentVariable("WD_TEST_SANDBOX_EXE") is { Length: > 0 } installed) return installed;
         // WhisperDesk's own build output (self-contained: the runtime sits next to the exe), not the copy in the test folder.
         var cfg = AppContext.BaseDirectory.Contains("\\Release\\") ? "Release" : "Debug";
         return Path.GetFullPath(RepoFile("..", "WhisperDesk", "bin", cfg, "net8.0-windows10.0.19041.0", "win-x64", "WhisperDesk.exe"));

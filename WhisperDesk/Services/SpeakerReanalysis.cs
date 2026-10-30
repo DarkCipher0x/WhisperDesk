@@ -13,7 +13,7 @@ public static class SpeakerReanalysis
     {
         if (result.MediaPath is not { } media || !File.Exists(media))
             throw new InvalidOperationException("This transcript has no audio (it was saved as transcript only, or the file was moved), so speakers can't be re-analysed.");
-        var ffmpeg = AudioDecoder.FindFfmpeg() ?? throw new InvalidOperationException("FFmpeg not found.");
+        var ffmpeg = AudioDecoder.FindFfmpeg();
 
         await SpeakerModels.EnsureAsync(progress, ct);
         progress.Report("Re-analysing speakers: reading audio…");

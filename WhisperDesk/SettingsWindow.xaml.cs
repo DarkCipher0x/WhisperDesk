@@ -18,7 +18,7 @@ public partial class SettingsWindow : Window
         BurnPositionBox.ItemsSource = new[] { "Bottom", "Top" };
         _draft = AppSettings.Current.Clone();
         Bind(_draft);
-        FfmpegFound.Text = AudioDecoder.FindFfmpeg() is { } f ? $"Currently using: {f}" : "FFmpeg not found. Install it with: winget install Gyan.FFmpeg";
+        FfmpegFound.Text = AudioDecoder.FindFfmpeg() is { } f ? $"Currently using: {f}" : "FFmpeg not found: Windows' own decoders read MP3, WAV, M4A, FLAC, WMA and MP4/MOV audio. For other formats and burning subtitles into video, install it with: winget install Gyan.FFmpeg";
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e) => ThemeManager.ApplyTitleBar(this);

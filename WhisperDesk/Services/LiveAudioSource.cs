@@ -37,7 +37,11 @@ public sealed class LiveAudioSource : IDisposable
         return list;
     }
 
-    public void Start(AudioDeviceInfo device)
+    /// <summary>
+    /// Opens the device without recording yet. This is where Windows refuses a microphone it hasn't allowed
+    /// (E_ACCESSDENIED), so a live session calls it before loading any models.
+    /// </summary>
+    public void Open(AudioDeviceInfo device)
     {
         Stop();
         _errors = 0;
@@ -47,8 +51,11 @@ public sealed class LiveAudioSource : IDisposable
         _resampler = new Resampler(_capture.WaveFormat, AudioDecoder.SampleRate);
         _capture.DataAvailable += OnData;
         _capture.RecordingStopped += (_, e) => Stopped?.Invoke(e.Exception);
-        _capture.StartRecording();
     }
+
+    /// <summary>Starts recording from the device opened by <see cref="Open"/>.</summary>
+    public void StartRecording() =>
+        (_capture ?? throw new InvalidOperationException("No audio input is open.")).StartRecording();
 
     private void OnData(object? sender, WaveInEventArgs e)
     {

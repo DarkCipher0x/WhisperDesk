@@ -1,0 +1,8 @@
+# Files that are deliberately NOT published (so the allowlist check doesn't flag them as forgotten).
+# Same path form as public-allowlist.txt.
+WhisperDesk/public-repo/**
+WhisperDesk/Packaging/StoreListing/**
+WhisperDesk/Packaging/Images/**
+WhisperDesk/.gitignore
+WhisperDesk.Addons/.gitignore
+WhisperDesk.Tests/.gitignore

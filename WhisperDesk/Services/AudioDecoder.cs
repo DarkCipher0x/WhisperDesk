@@ -3,7 +3,7 @@ using System.IO;
 
 namespace WhisperDesk.Services;
 
-/// <summary>Uses FFmpeg to turn any audio/video file into 16 kHz mono float samples for Whisper.</summary>
+/// <summary>Turns any audio/video file into 16 kHz mono float samples for Whisper (FFmpeg, or Windows' decoders without it).</summary>
 public static class AudioDecoder
 {
     public const int SampleRate = 16000;
@@ -52,7 +52,84 @@ public static class AudioDecoder
         return null;
     }
 
-    public static async Task<float[]> DecodeAsync(string ffmpeg, string input, CancellationToken ct)
+    /// <summary>
+    /// Decodes with FFmpeg when it's installed, otherwise with Windows' own Media Foundation codecs (MP3, WAV, M4A/AAC,
+    /// FLAC, WMA, MP4/MOV/WMV/AVI audio…). The Store copy can't install FFmpeg for the user, so without this a fresh
+    /// install couldn't read even its own recordings.
+    /// </summary>
+    public static Task<float[]> DecodeAsync(string? ffmpeg, string input, CancellationToken ct) =>
+        ffmpeg != null ? DecodeWithFfmpegAsync(ffmpeg, input, ct) : Task.Run(() => DecodeWithWindows(input, ct), ct);
+
+    public const string FfmpegHint = "Install FFmpeg for more formats (winget install Gyan.FFmpeg) or set its location in File → Settings.";
+
+    /// <summary>Windows' Media Foundation decoder: 16 kHz mono float, read in the same 8 MB blocks as the FFmpeg path.</summary>
+    public static float[] DecodeWithWindows(string input, CancellationToken ct)
+    {
+        NAudio.Wave.MediaFoundationReader reader;
+        try { reader = new NAudio.Wave.MediaFoundationReader(input); }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Windows can't read this file ({ex.Message.Trim()}). " + FfmpegHint, ex);
+        }
+        using (reader)
+        {
+            var mono = new MonoMix(NAudio.Wave.WaveExtensionMethods.ToSampleProvider(reader));
+            NAudio.Wave.ISampleProvider source = mono.WaveFormat.SampleRate == SampleRate
+                ? mono : new NAudio.Wave.SampleProviders.WdlResamplingSampleProvider(mono, SampleRate);
+
+            const int Block = 2 << 20; // floats (8 MB)
+            var blocks = new List<float[]>();
+            long total = 0;
+            int fill = Block;
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (fill == Block) { blocks.Add(new float[Block]); fill = 0; }
+                int n = source.Read(blocks[^1], fill, Block - fill);
+                if (n == 0) break;
+                fill += n;
+                total += n;
+            }
+            if (total == 0) throw new InvalidOperationException("The file has no audio track.");
+
+            var samples = new float[total];
+            long copied = 0;
+            foreach (var b in blocks)
+            {
+                int take = (int)Math.Min(Block, total - copied);
+                if (take <= 0) break;
+                Array.Copy(b, 0, samples, copied, take);
+                copied += take;
+            }
+            return samples;
+        }
+    }
+
+    /// <summary>Averages every channel into one (any channel count).</summary>
+    private sealed class MonoMix(NAudio.Wave.ISampleProvider source) : NAudio.Wave.ISampleProvider
+    {
+        private readonly int _channels = source.WaveFormat.Channels;
+        private float[] _buffer = Array.Empty<float>();
+        public NAudio.Wave.WaveFormat WaveFormat { get; } = NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(source.WaveFormat.SampleRate, 1);
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            if (_channels == 1) return source.Read(buffer, offset, count);
+            int needed = count * _channels;
+            if (_buffer.Length < needed) _buffer = new float[needed];
+            int read = source.Read(_buffer, 0, needed);
+            int frames = read / _channels;
+            for (int f = 0; f < frames; f++)
+            {
+                float sum = 0;
+                for (int c = 0; c < _channels; c++) sum += _buffer[f * _channels + c];
+                buffer[offset + f] = sum / _channels;
+            }
+            return frames;
+        }
+    }
+
+    private static async Task<float[]> DecodeWithFfmpegAsync(string ffmpeg, string input, CancellationToken ct)
     {
         var psi = new ProcessStartInfo(ffmpeg)
         {

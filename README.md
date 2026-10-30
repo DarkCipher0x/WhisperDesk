@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 1.8.0" src="https://img.shields.io/badge/version-1.8.0-2dd4bf">
+  <img alt="Version 1.8.1" src="https://img.shields.io/badge/version-1.8.1-2dd4bf">
   <img alt="Windows 10/11 x64" src="https://img.shields.io/badge/Windows-10%20%7C%2011%20x64-0f172a">
   <img alt=".NET 8 WPF" src="https://img.shields.io/badge/.NET-8%20WPF-512bd4">
   <img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-2dd4bf">
@@ -67,16 +67,16 @@ Get the latest version from [**Releases**](../../releases/latest):
 | `WhisperDesk-<ver>-x64.msi` | Installer: Start menu shortcut, upgrades older versions in place |
 | `WhisperDesk-<ver>-x64-portable.zip` | Unzip and run, no install needed |
 | `WhisperDesk-<ver>-User-Admin-Guide.pdf` | The full user and administrator guide (also in the app: Help → User & admin guide) |
-| `WhisperDesk-Addon-SDK-<ver>.zip` | The add-on SDK: contract DLL, XML docs and a sample |
-| `WhisperDesk-Addon-WordExport.zip` | The sample Word export add-on, ready to install |
-| `SHA256SUMS.txt` | Checksums of every file above |
+| `WhisperDesk-<ver>-Addon-SDK.zip` | The add-on SDK: contract DLL, XML docs and a sample |
+| `WhisperDesk-<ver>-Addon-WordExport.zip` | The sample Word export add-on, ready to install |
+| `WhisperDesk-<ver>-SHA256SUMS.txt` | Checksums of every file above |
 
 Requirements: Windows 10 or 11, x64; a CPU with AVX2; 8 GB RAM (16 GB recommended). A Vulkan GPU or an
 Intel NPU is recommended but not needed. Reading most audio and video formats needs [FFmpeg](https://ffmpeg.org), a free
 separate program (`winget install Gyan.FFmpeg`); WhisperDesk tells you if it's missing.
 
 The MSI and zip are not code-signed yet, so Windows SmartScreen may show "unknown publisher". Check the download
-against `SHA256SUMS.txt` (`Get-FileHash .\WhisperDesk-1.8.0-x64.msi`).
+against the version's SHA256SUMS file (`Get-FileHash .\WhisperDesk-1.8.1-x64.msi`).
 
 ## Build from source
 
@@ -86,8 +86,11 @@ Requirements: Windows 10/11 x64 and the [.NET 8 SDK](https://dotnet.microsoft.co
 ```powershell
 git clone https://github.com/DarkCipher0x/WhisperDesk.git
 cd WhisperDesk\WhisperDesk
-.\build.ps1        # locked restore + audit, security tests, MSI, portable zip, MSIX, checksums -> dist\
+.\build.ps1        # locked restore + audit, security tests, MSI, portable zip, add-on SDK, MSIX, checksums -> dist\<version>\
 ```
+
+`build.ps1` only builds. Releases are made by `release.ps1` on the maintainer's PC (checks, secret and privacy scans, this
+repository, the GitHub Release, the website and Discord): see [WhisperDesk/docs/RELEASE-PIPELINE.md](WhisperDesk/docs/RELEASE-PIPELINE.md).
 
 To just run it: `dotnet run --project WhisperDesk\WhisperDesk.csproj`. Tests: `dotnet test WhisperDesk.Tests`.
 Open `WhisperDesk.sln` in Visual Studio 2022 or Rider.

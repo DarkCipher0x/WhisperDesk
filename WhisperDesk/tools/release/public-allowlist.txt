@@ -1,0 +1,65 @@
+# Everything that may be published to the public repository, as paths in the PUBLIC tree.
+# Sources: WhisperDesk\ -> WhisperDesk/, WhisperDesk.Addons\ -> WhisperDesk.Addons/, WhisperDesk.Tests\ -> WhisperDesk.Tests/,
+# public-repo\ -> repository root. "*" stays within a folder, "**/" is any number of folders.
+# A file not matched here is NOT published. New code files that match nothing stop the release until they are added
+# here or to public-private.txt (deliberately private). The hard-deny rules in steps.ps1 win over this list.
+
+# Repository root (from public-repo\)
+README.md
+LICENSE
+WhisperDesk.sln
+.gitignore
+.gitattributes
+.github/**/*.md
+.github/**/*.yml
+
+# The app
+WhisperDesk/*.cs
+WhisperDesk/*.xaml
+WhisperDesk/app.manifest
+WhisperDesk/WhisperDesk.csproj
+WhisperDesk/packages.lock.json
+WhisperDesk/build.ps1
+WhisperDesk/release.ps1
+WhisperDesk/CHANGELOG.md
+WhisperDesk/README.md
+WhisperDesk/LICENSE
+WhisperDesk/.config/dotnet-tools.json
+WhisperDesk/Assets/*.png
+WhisperDesk/Assets/*.ico
+WhisperDesk/Services/**/*.cs
+WhisperDesk/Themes/*.xaml
+WhisperDesk/Installer/WhisperDesk.wxs
+WhisperDesk/Installer/License.rtf
+WhisperDesk/Packaging/AppxManifest.xml
+WhisperDesk/Packaging/StoreTools.csproj
+WhisperDesk/Packaging/packages.lock.json
+WhisperDesk/Packaging/make-images.ps1
+WhisperDesk/Packaging/make-store-art.ps1
+WhisperDesk/Packaging/shrink-store-images.py
+WhisperDesk/Packaging/store-identity.json
+WhisperDesk/docs/*.md
+WhisperDesk/docs/*.py
+WhisperDesk/docs/img/*.png
+WhisperDesk/docs/WhisperDesk-User-Admin-Guide.pdf
+WhisperDesk/sdk/README.md
+WhisperDesk/sdk/WhisperDesk.Addons.dll
+WhisperDesk/sdk/WhisperDesk.Addons.xml
+WhisperDesk/sdk/SampleWordExport/*.cs
+WhisperDesk/sdk/SampleWordExport/*.csproj
+WhisperDesk/sdk/SampleWordExport/addon.json
+WhisperDesk/tools/*.ps1
+WhisperDesk/tools/release/*.ps1
+WhisperDesk/tools/release/*.txt
+WhisperDesk/tools/release/gitleaks.toml
+WhisperDesk/release/*.json
+
+# Add-on contract and tests
+WhisperDesk.Addons/*.cs
+WhisperDesk.Addons/*.csproj
+WhisperDesk.Tests/*.cs
+WhisperDesk.Tests/*.csproj
+WhisperDesk.Tests/packages.lock.json
+WhisperDesk.Tests/ProbeAddon/*.cs
+WhisperDesk.Tests/ProbeAddon/*.csproj
+WhisperDesk.Tests/ProbeAddon/packages.lock.json

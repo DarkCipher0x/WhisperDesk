@@ -108,7 +108,6 @@ public partial class VoiceAnalysisWindow : Window
         var media = _result?.MediaPath;
         if (media == null || !File.Exists(media)) { StatusText.Text = "This recording has no audio to analyse."; return null; }
         var ffmpeg = AudioDecoder.FindFfmpeg();
-        if (ffmpeg == null) { StatusText.Text = "FFmpeg was not found (Settings → Storage & tools)."; return null; }
         StatusText.Text = "Reading audio…";
         await SpeakerModels.EnsureAsync(new Progress<string>(s => StatusText.Text = s), CancellationToken.None);
         _samples = await Task.Run(() => AudioDecoder.DecodeAsync(ffmpeg, media, CancellationToken.None));

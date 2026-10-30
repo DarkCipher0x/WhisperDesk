@@ -1,6 +1,13 @@
 # Changelog
 
-## 1.8.0
+## 1.8.1
+
+**Fixed**
+- Live transcription in the Microsoft Store copy failed with "Access is denied (E_ACCESSDENIED)". The Store copy now asks Windows for microphone permission (the "Let WhisperDesk access your microphone?" prompt) before its first live session. If microphone access is off, WhisperDesk says which switch to turn on and offers to open Settings → Privacy & security → Microphone, in every copy (Store, MSI and zip).
+- Start live now checks the microphone before loading any models, so a problem shows in about a second instead of after a model load. A start that fails no longer leaves an empty recording behind, and add-ons see the session end that they saw start.
+- WhisperDesk no longer needs FFmpeg to read audio. Without it, Windows' own decoders read MP3, WAV, M4A/AAC, FLAC, WMA and the audio in MP4, MOV and WMV files, so a fresh install (including the Store copy, which can't install FFmpeg for you) can transcribe files, play transcript lines, re-analyse speakers, add voices, run forensics and share sessions. FFmpeg is still used first when it's installed, and it is still needed for other formats and for burning subtitles into video (WhisperDesk asks before skipping that step).
+- The Store package's large tile and splash images are within Windows' 200 KB image limit.
+
 
 **Microsoft Store edition**
 - `build.ps1` now also makes an MSIX package for the Microsoft Store (`dist\store\`), from the same program files as the MSI and zip. The Store signs it with Microsoft's certificate, so Store users get no "unknown publisher" warning and receive updates through the Store. How to submit it: `docs/MICROSOFT-STORE.md`.

@@ -21,7 +21,7 @@
     <!-- The ONE place the version is set. The SDK derives AssemblyVersion (1.7.0.0), FileVersion and
          InformationalVersion from it; the app reads it at run time (AboutWindow.Version), build.ps1 reads it for the
          MSI/zip names and passes it to the installer, and docs/make_guide.py reads it for the guide. -->
-    <Version>1.8.0</Version>
+    <Version>1.8.1</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <NeutralLanguage>en-US</NeutralLanguage>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>

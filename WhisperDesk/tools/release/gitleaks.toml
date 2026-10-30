@@ -1,0 +1,32 @@
+# Secret scan for every WhisperDesk release (tools\release\steps.ps1, step "scan").
+# gitleaks' default rules plus the secret formats DarkCipher projects use.
+title = "WhisperDesk release secret scan"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "discord-webhook-url"
+description = "Discord webhook URL"
+regex = '''https://(?:ptb\.|canary\.)?discord(?:app)?\.com/api/webhooks/\d+/[\w-]{20,}'''
+keywords = ["discord"]
+
+[[rules]]
+id = "github-token-any"
+description = "GitHub token (classic, OAuth, app, refresh or fine-grained)"
+regex = '''\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{60,})\b'''
+keywords = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"]
+
+[[rules]]
+id = "private-key-block"
+description = "Private key block (SSH, PGP, PEM)"
+regex = '''-----BEGIN (?:[A-Z]+ )*PRIVATE KEY(?: BLOCK)?-----'''
+keywords = ["private key"]
+
+[[rules]]
+id = "generic-deploy-secret"
+description = "Deploy or webhook secret assignment"
+regex = '''(?i)\b(?:deploy[_-]?key|webhook[_-]?(?:url|secret)|api[_-]?key|access[_-]?token)\s*[:=]\s*["'][^"'\s]{16,}["']'''
+keywords = ["deploy", "webhook", "api", "token"]
+
+# No allowlist: test fixtures that look like secrets are assembled at run time (see HardeningTests), so every match fails the release.

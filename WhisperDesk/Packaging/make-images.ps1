@@ -13,7 +13,8 @@ function Save([string]$name, [int]$w, [int]$h, [double]$fill) {
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.InterpolationMode = 'HighQualityBicubic'; $g.SmoothingMode = 'HighQuality'; $g.PixelOffsetMode = 'HighQuality'; $g.CompositingQuality = 'HighQuality'
     $g.Clear([System.Drawing.Color]::Transparent)
-    $s = [int][math]::Round([math]::Min($w, $h) * $fill)
+    # Never larger than the logo itself: upscaling adds no detail, only bytes (the Store rejects images over 200 KB).
+    $s = [int][math]::Min([math]::Round([math]::Min($w, $h) * $fill), $logo.Width)
     $g.DrawImage($logo, [int](($w - $s) / 2), [int](($h - $s) / 2), $s, $s)
     $g.Dispose()
     $bmp.Save((Join-Path $out $name), [System.Drawing.Imaging.ImageFormat]::Png)
@@ -37,4 +38,7 @@ foreach ($t in 16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256) {
     Save "Square44x44Logo.targetsize-$($t)_altform-lightunplated.png" $t $t 1.0
 }
 $logo.Dispose()
+# Windows App Certification Kit "App resources": every image must be smaller than 200 KB (204800 bytes).
+$big = Get-ChildItem $out -Filter *.png | Where-Object Length -ge 204800
+if ($big) { throw "Images over the Store's 200 KB limit: " + (($big | ForEach-Object { "$($_.Name) ($($_.Length) bytes)" }) -join ', ') }
 Write-Host "Images written to $out"

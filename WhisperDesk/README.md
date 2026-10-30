@@ -1,6 +1,6 @@
 # WhisperDesk
 
-by **darkcipher0x** · v1.8.0 · open source ([MIT License](LICENSE))
+by **darkcipher0x** · v1.8.1 · open source ([MIT License](LICENSE))
 
 Local, GPU-accelerated transcription for Windows: files, live audio (mic / Voicemeeter / PC loopback), speaker
 identification with a voice library, a recordings library, and add-ons. Built on whisper.cpp (Vulkan: AMD, NVIDIA,

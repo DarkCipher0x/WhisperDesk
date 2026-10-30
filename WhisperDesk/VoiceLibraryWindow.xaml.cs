@@ -244,7 +244,6 @@ public partial class VoiceLibraryWindow : Window
             return;
         }
         var ffmpeg = AudioDecoder.FindFfmpeg();
-        if (ffmpeg == null) { AddStatus.Text = "FFmpeg not found (see File → Settings)."; return; }
 
         var exts = string.Join(";", AudioDecoder.SupportedExtensions.Select(x => "*" + x));
         var dlg = new OpenFileDialog { Filter = $"Audio & video|{exts}", Title = $"Recording of {name} talking" };

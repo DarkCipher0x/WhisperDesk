@@ -21,8 +21,12 @@ public static class SessionPackage
     private static async Task<string?> CompressAudioAsync(RecordingMeta meta, string workDir, CancellationToken ct)
     {
         if (!meta.HasMedia) return null;
-        var ffmpeg = AudioDecoder.FindFfmpeg() ?? throw new InvalidOperationException("FFmpeg not found (needed to compress the audio).");
         var output = Path.Combine(workDir, "audio.m4a");
+        if (AudioDecoder.FindFfmpeg() is not { } ffmpeg)
+        {
+            await Task.Run(() => CompressWithWindows(meta.MediaPath, output), ct);
+            return output;
+        }
         var psi = new ProcessStartInfo(ffmpeg) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
         foreach (var a in new[] { "-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i", meta.MediaPath,
                                   "-vn", "-ac", "1", "-ar", "24000", "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart", output })
@@ -32,6 +36,26 @@ public static class SessionPackage
         await p.WaitForExitAsync(ct);
         if (p.ExitCode != 0) throw new InvalidOperationException("Could not compress the audio: " + (await err).Trim());
         return output;
+    }
+
+    /// <summary>
+    /// Without FFmpeg: Windows' AAC encoder (Media Foundation). It only takes 44.1/48 kHz 16-bit input and 96 kb/s or more,
+    /// so the file is a little larger than FFmpeg's 64 kb/s one.
+    /// </summary>
+    private static void CompressWithWindows(string input, string output)
+    {
+        try
+        {
+            using var reader = new NAudio.Wave.MediaFoundationReader(input);
+            var samples = NAudio.Wave.WaveExtensionMethods.ToSampleProvider(reader);
+            if (samples.WaveFormat.Channels == 2) samples = new NAudio.Wave.SampleProviders.StereoToMonoSampleProvider(samples);
+            if (samples.WaveFormat.SampleRate != 44100) samples = new NAudio.Wave.SampleProviders.WdlResamplingSampleProvider(samples, 44100);
+            NAudio.Wave.MediaFoundationEncoder.EncodeToAac(new NAudio.Wave.SampleProviders.SampleToWaveProvider16(samples), output, 96000);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Could not compress the audio with Windows' encoder ({ex.Message.Trim()}). " + AudioDecoder.FfmpegHint, ex);
+        }
     }
 
     /// <summary>Copy of the metadata safe to share: no voiceprints, no local file paths.</summary>

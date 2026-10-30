@@ -51,7 +51,7 @@ public partial class PlayerWindow
         SetForensicsEnabled(false);
         try
         {
-            var ffmpeg = AudioDecoder.FindFfmpeg() ?? throw new InvalidOperationException("FFmpeg was not found (Settings → Storage & tools).");
+            var ffmpeg = AudioDecoder.FindFfmpeg();
             SelText.Text = "Reading audio and fingerprinting the file…";
             _fSamples = await Task.Run(() => AudioDecoder.DecodeAsync(ffmpeg, _meta.MediaPath, CancellationToken.None));
             _audit = new ForensicAudit(_isImported ? null : _meta, _meta.MediaPath);

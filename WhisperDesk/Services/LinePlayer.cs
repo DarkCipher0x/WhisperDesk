@@ -137,7 +137,7 @@ public sealed class LinePlayer
 
         float[] samples = growing
             ? await Task.Run(() => LiveRecording.ReadPcm16Mono(path))
-            : await Task.Run(() => AudioDecoder.DecodeAsync(AudioDecoder.FindFfmpeg() ?? throw new InvalidOperationException("FFmpeg not found."),
+            : await Task.Run(() => AudioDecoder.DecodeAsync(AudioDecoder.FindFfmpeg(),
                                                                path, CancellationToken.None));
         if (!growing) { _cached = samples; _cachedPath = path; }
         return samples;
