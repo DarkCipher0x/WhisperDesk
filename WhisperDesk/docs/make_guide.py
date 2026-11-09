@@ -8,6 +8,10 @@ import os
 import sys
 from datetime import date
 
+from reportlab import rl_config
+# Binary (not ASCII85) streams: ASCII85 turns compressed data into printable text, where a short term in the release
+# privacy audit can turn up by chance (it did in 1.9.1's first build). Binary streams are smaller too.
+rl_config.useA85 = 0
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4

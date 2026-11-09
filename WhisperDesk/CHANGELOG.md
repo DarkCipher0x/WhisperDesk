@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.1
+
+**Fixed**
+- The User & Administrator Guide is the 1.9 edition. The guide published with 1.9.0 was still the 1.8 text: it now covers the Models window (download, update and check for new models), the new quantised and English-only models, signed in-app updates and .NET 10. The app itself is unchanged from 1.9.0.
+
 ## 1.9.0
 
 **Fixed**
