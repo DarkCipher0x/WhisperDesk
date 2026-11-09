@@ -102,7 +102,10 @@ function Get-GhHeaders {
 function Invoke-GitHub([string]$method, [string]$uri, $body = $null) {
     $json = $null
     if ($null -ne $body) { $json = [Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $body -Depth 6)) }   # (not an if-expression: it would unroll the byte[])
-    Invoke-RestMethod -Method $method -Uri $uri -Headers (Get-GhHeaders) -Body $json -ContentType 'application/json; charset=utf-8'
+    $r = Invoke-RestMethod -Method $method -Uri $uri -Headers (Get-GhHeaders) -Body $json -ContentType 'application/json; charset=utf-8'
+    # Output through the pipeline so a JSON list comes out as its items: Invoke-RestMethod writes it as ONE array object,
+    # and @(Invoke-GitHub ...) would then nest it (1.8.1: the digest check compared all six digests joined together).
+    $r
 }
 function Get-GhRelease([string]$tag) {
     # The tag endpoint only returns published releases; drafts are found in the list

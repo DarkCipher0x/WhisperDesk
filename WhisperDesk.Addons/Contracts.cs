@@ -1,7 +1,7 @@
 namespace WhisperDesk.Addons;
 
 /// <summary>
-/// Implement this in a .NET 8 class library. Put the DLL and an addon.json manifest (id, name, author, entry, capabilities)
+/// Implement this in a .NET 10 class library. Put the DLL and an addon.json manifest (id, name, author, entry, capabilities)
 /// in a folder under %LOCALAPPDATA%\WhisperDesk\addons\ (Tools → Add-ons → Open add-ons folder). WhisperDesk shows the
 /// capabilities to the user and, once approved, runs the add-on in a separate sandboxed process (a Windows AppContainer)
 /// that only receives the events and access it was granted. See sdk\README.md.

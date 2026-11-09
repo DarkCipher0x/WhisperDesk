@@ -4,7 +4,7 @@
        (makeappx.exe, makepri.exe, signtool.exe) from the Microsoft.Windows.SDK.BuildTools package, so the build doesn't
        need the Windows SDK installed. -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <NuGetAudit>true</NuGetAudit>

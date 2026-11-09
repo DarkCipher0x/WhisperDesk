@@ -38,6 +38,7 @@ WhisperDesk/Packaging/make-images.ps1
 WhisperDesk/Packaging/make-store-art.ps1
 WhisperDesk/Packaging/shrink-store-images.py
 WhisperDesk/Packaging/store-identity.json
+WhisperDesk/Packaging/store-check/*.ps1
 WhisperDesk/docs/*.md
 WhisperDesk/docs/*.py
 WhisperDesk/docs/img/*.png
@@ -53,6 +54,7 @@ WhisperDesk/tools/release/*.ps1
 WhisperDesk/tools/release/*.txt
 WhisperDesk/tools/release/gitleaks.toml
 WhisperDesk/release/*.json
+WhisperDesk/models/*.json
 
 # Add-on contract and tests
 WhisperDesk.Addons/*.cs

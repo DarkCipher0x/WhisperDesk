@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <img alt="Version 1.8.1" src="https://img.shields.io/badge/version-1.8.1-2dd4bf">
+  <img alt="Version 1.9.0" src="https://img.shields.io/badge/version-1.9.0-2dd4bf">
   <img alt="Windows 10/11 x64" src="https://img.shields.io/badge/Windows-10%20%7C%2011%20x64-0f172a">
-  <img alt=".NET 8 WPF" src="https://img.shields.io/badge/.NET-8%20WPF-512bd4">
+  <img alt=".NET 10 WPF" src="https://img.shields.io/badge/.NET-10%20WPF-512bd4">
   <img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-2dd4bf">
   <img alt="Optional encryption" src="https://img.shields.io/badge/library-AES--256--GCM-0f172a">
   <img alt="No telemetry" src="https://img.shields.io/badge/telemetry-none-2dd4bf">
@@ -76,11 +76,11 @@ Intel NPU is recommended but not needed. Reading most audio and video formats ne
 separate program (`winget install Gyan.FFmpeg`); WhisperDesk tells you if it's missing.
 
 The MSI and zip are not code-signed yet, so Windows SmartScreen may show "unknown publisher". Check the download
-against the version's SHA256SUMS file (`Get-FileHash .\WhisperDesk-1.8.1-x64.msi`).
+against the version's SHA256SUMS file (`Get-FileHash .\WhisperDesk-1.9.0-x64.msi`).
 
 ## Build from source
 
-Requirements: Windows 10/11 x64 and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Everything else
+Requirements: Windows 10/11 x64 and the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). Everything else
 (WiX, the MSIX tools, NuGet packages) is restored by the build.
 
 ```powershell

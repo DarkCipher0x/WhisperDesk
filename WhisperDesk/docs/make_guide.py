@@ -213,6 +213,22 @@ story.append(toc)
 story.append(PageBreak())
 
 # =====================================================================
+H1("What's new in 1.9")
+TABLE([
+    ["Feature", "Where / how"],
+    ["Signed in-app updates", "Settings → Updates or Help → Check for updates…. Off until you check or switch on the "
+     "automatic check. Updates must carry both WhisperDesk release-key signatures, and the installer is verified before it runs."],
+    [".NET 10", "WhisperDesk now runs on .NET 10 (long-term support). Nothing to install: the runtime is built in."],
+    ["Store live transcription fixed", "The Microsoft Store copy now includes the Visual C++ runtime that speaker "
+     "recognition, voice detection and the transcription engine need, so Live works on a fresh PC."],
+    ["Manage and update models", "Tools → Models → <b>Manage and update models…</b> lists every speech, speaker and "
+     "voice-detection model with its size and state. Download, update or remove each one, or <b>Update all</b>; "
+     "<b>Check for new models</b> fetches WhisperDesk's signed model list, so new models arrive without an app update "
+     "(the Store copy too). Every file must match its SHA-256 before it is used."],
+    ["New models", "Large-v3 Turbo q8 and q5 and Large-v3 q5 (about half the size and memory), and English-only Tiny, "
+     "Base, Small and Medium."],
+],[42 * mm, CONTENT_W - 42 * mm])
+
 H1("What's new in 1.8")
 TABLE([
     ["Feature", "Where / how"],
@@ -293,7 +309,8 @@ TABLE([
      "“Thank you.” lines and repeat loops. Speaker detection compares several samples per voice, merges look-alikes "
      "and is capped (Settings → Speakers)."],
     ["Custom models", "Tools → Models → <b>Import a custom model…</b>: any whisper.cpp GGML model (fine-tuned, distilled, "
-     "quantised, language-specific). Imported models show with ★ in the Model list."],
+     "quantised, language-specific). Imported models show with ★ in the Model list. Built-in models are managed in "
+     "Tools → Models → <b>Manage and update models…</b>."],
     ["Live feed window", "View → Live feed (Ctrl+Shift+F) or <b>⧉ Feed</b>: a clean, chat-style read-only feed with "
      "speaker colours. Snap left/right/bottom, full screen (F11), bigger text (Ctrl + wheel), always on top. The player "
      "has one too that replays lines as the audio plays."],
@@ -799,10 +816,21 @@ BULLETS([
     "Make a new one (the old one stops working) from the same page.",
 ])
 H2("Network")
-P("WhisperDesk connects to nothing when it starts and has no telemetry, analytics, crash reporting or update checks. "
+P("WhisperDesk connects to nothing when it starts and has no telemetry, analytics or crash reporting. Update checks "
+  "only happen when you ask (see <b>Updates</b> below). "
   "<b>Model downloads</b> are set to <i>Ask</i>: a dialog says which model, from which server and how big, before anything "
   "is fetched. <b>Network activity…</b> lists every connection with the feature that made it (no transcript content is "
   "listed). Summaries only go to an AI server on another computer if you allow it under Summary &amp; AI.")
+H2("Updates")
+P("<b>Settings → Updates</b> (or <b>Help → Check for updates…</b>) checks WhisperDesk's GitHub releases for a newer "
+  "version. An update is offered only when its update information is signed by both WhisperDesk release keys, which "
+  "are built into the app (a classic ECDSA key and a post-quantum ML-DSA key), so nobody else can make WhisperDesk "
+  "install anything. <b>Download and verify</b> checks the installer's size, SHA-256 and identity; <b>Install…</b> "
+  "closes WhisperDesk and lets Windows Installer upgrade it, keeping your library, voices, models and settings.")
+P("Nothing is checked automatically unless you switch on <b>Check automatically</b> (weekly or daily); downloading "
+  "in the background is a separate switch. The Microsoft Store copy is updated by the Store. The portable copy shows "
+  "the release page, where the new zip is. You can also point WhisperDesk at an https address of your own that "
+  "mirrors the same signed files.")
 H2("Cloud-synced folders")
 P("If the library is in a folder that OneDrive, Dropbox, Google Drive, iCloud Drive, Box or another sync service uploads, "
   "WhisperDesk warns you (it checks the sync folders Windows has registered and well-known folder names) but doesn't stop "
@@ -890,7 +918,7 @@ H2("Backup and moving to another PC")
 P("Use File → Backup… (optionally encrypted), copy the file to the new PC and use File → Restore from backup…. "
   "Models can be left out — they download again.")
 H2("Writing add-ons (developers)")
-P("Create a .NET 8 class library that references <font name=\"Mono\">sdk\\WhisperDesk.Addons.dll</font> (Private=false) "
+P("Create a .NET 10 class library that references <font name=\"Mono\">sdk\\WhisperDesk.Addons.dll</font> (Private=false) "
   "and implements <font name=\"Mono\">IWhisperDeskAddon</font>. Put the DLL with an <font name=\"Mono\">addon.json</font> "
   "(id, name, author, entry, capabilities) in its own folder under the add-ons folder and restart. "
   "Events: <font name=\"Mono\">LineAdded</font>, <font name=\"Mono\">SessionStarted/Stopped</font>, "

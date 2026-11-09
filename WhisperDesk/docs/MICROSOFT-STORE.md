@@ -36,7 +36,7 @@ Until `store-identity.json` is filled in, the build names the package `...-local
 ## Each release
 
 1. Run `.\build.ps1`. The console should say `MSIX: dist\store\WhisperDesk-<version>-x64.msix (ready to upload to Partner Center)`.
-2. Test it locally (next section).
+2. Run the clean-room check (below). It must say PASS for the Store package, the portable zip and the App Certification Kit.
 3. In Partner Center, create a new submission:
    - **Packages:** upload the `.msix`. Partner Center checks the identity, version and manifest.
    - **Properties:** category *Productivity*. Add the privacy policy URL. System requirements: 8 GB memory recommended; a Vulkan GPU or Intel NPU is optional.
@@ -45,8 +45,33 @@ Until `store-identity.json` is filled in, the build names the package `...-local
    - **Submission options → restricted capabilities:** Partner Center asks why two capabilities are needed. Suggested answers:
      - **runFullTrust:** "WhisperDesk is a WPF desktop application that runs whisper.cpp, ONNX Runtime and Vulkan native code on the user's PC for offline transcription. It also starts third-party add-ons in a Windows AppContainer sandbox that it creates itself."
      - **unvirtualizedResources:** "Users keep legal and evidential recordings in WhisperDesk's library (%LOCALAPPDATA%\WhisperDesk). Write virtualization would put this data in package storage that Windows deletes on uninstall, so reinstalling or repairing the app would destroy recordings. The data folder is shared with the MSI edition, and the add-on sandbox and encrypted working folder rely on real paths."
-   - **Notes for certification:** "No account or sign-in. The app works offline. Models download on first use after the user confirms (Hugging Face/GitHub, pinned and SHA-256 verified). FFmpeg is a separate install (winget install Gyan.FFmpeg); without it, the app explains how to install it."
+   - **Notes for certification:** paste the text in `Packaging/StoreListing/SUBMISSION.md` (it walks the tester through Live, the microphone prompt and the model download).
 4. Submit. Certification usually takes 1–3 business days. Once it passes, the Store signs and publishes the package.
+
+## Clean-room check (run before every submission)
+
+Certification installs the package on a clean Windows with nothing else on it. That is where 1.8.x failed: Live needed the
+Visual C++ runtime, which every developer PC has and a clean one doesn't. `Packaging\store-check\run-store-check.ps1`
+repeats that test in Windows Sandbox (Settings → System → Optional features → Windows Sandbox, once):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Packaging\store-check\run-store-check.ps1        # add -Gpu to give the sandbox the GPU
+```
+
+Inside a fresh sandbox (discarded afterwards) it:
+1. signs the real `dist\store\*.msix` with a throw-away certificate (standing in for Microsoft's), installs it with
+   `Add-AppxPackage` and starts it through Windows' app activation, exactly as Start does, with `--selftest`;
+2. runs the same self-test from the portable zip;
+3. runs the Windows App Certification Kit on the installed package when the host has the kit (Windows SDK).
+
+The self-test (`WhisperDesk.exe --selftest <report.txt> [--cpu]`) works in a throw-away data folder and checks that the
+bundled Visual C++ runtime is the one loaded, ONNX Runtime loads, the Tiny and speaker models download and match their
+SHA-256, and that a sentence spoken by Windows' text-to-speech is transcribed both as a file and through a real live
+session (voice detection, Whisper, speaker identification). It writes each step as it goes; a step that hangs ends the
+run after 15 minutes with its name in the report, and the sandbox saves a screenshot. Reports land in
+`%TEMP%\wd-storecheck-*\out` and the script prints them; exit code 0 means everything passed.
+
+The microphone prompt itself can't be tested this way (the sandbox has no microphone); see below.
 
 ## Testing the package locally
 
@@ -71,7 +96,17 @@ To catch problems before Partner Center does, you can also run the **Windows App
 
 ### Not yet verified
 
-The package has been built and its contents checked, but it hasn't been installed on a test PC. These areas need checking in the steps above before the first submission:
+Verified for 1.9.0 (clean-room check, 2026-11-08): the real package installs and starts on a clean Windows without the
+Visual C++ runtime; the bundled runtime, ONNX Runtime, model downloads, file transcription and a full live session
+(voice detection, Whisper, speaker identification) work on the GPU path and on the CPU only; Windows reports the
+microphone as "prompt required"; the App Certification Kit's required tests pass.
+
+Smart App Control: Windows Sandbox (like a newly installed Windows 11) has it on, and it blocks anything without a trusted
+or reputable signature. The Store's Microsoft signature passes it. The test-signed package, the unsigned portable zip
+and the unsigned MSI do not: on a PC with Smart App Control on, the MSI and zip are blocked until they are code-signed
+(`WD_SIGN_THUMBPRINT`) or build reputation. The check switches it off inside the sandbox to test the program itself.
+
+Still to check by hand, in the steps above:
 - **Add-on sandbox:** WhisperDesk starts add-ons in an AppContainer. From inside a package, Windows may give that child process the package identity.
 - **Microphone permission prompt:** packaged apps get a per-app microphone switch in Windows privacy settings.
   Microsoft's 1.8.0 certification test failed here. Recording through WASAPI alone never shows Windows' prompt, so the

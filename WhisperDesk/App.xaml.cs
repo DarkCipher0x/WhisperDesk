@@ -41,7 +41,8 @@ public partial class App : Application
         // The Store package has its own identity, which Windows uses for the taskbar and Start; don't override it.
         if (!PackageInfo.IsPackaged) try { SetCurrentProcessExplicitAppUserModelID(AppUserModelId); } catch { }
         try { RecordingLibrary.PinPreviousDefault(); } catch (Exception ex) { Log("Library location", ex); }
-        ThemeManager.Apply(Enum.TryParse<ThemeMode>(AppSettings.Current.Theme, out var mode) ? mode : ThemeMode.System);
+        // Services.ThemeMode: inside an Application, a bare ThemeMode is WPF's Application.ThemeMode property.
+        ThemeManager.Apply(Enum.TryParse<Services.ThemeMode>(AppSettings.Current.Theme, out var mode) ? mode : Services.ThemeMode.System);
         ThemeManager.FollowSystemChanges();
         base.OnStartup(e);
         WindowsShare.CleanUp();

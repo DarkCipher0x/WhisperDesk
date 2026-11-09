@@ -18,7 +18,7 @@ There are two ways to integrate:
 
 ## Writing an add-on
 
-1. Create a .NET 8 class library and reference `WhisperDesk.Addons.dll` (in this folder) with `Private=false`.
+1. Create a .NET 10 class library and reference `WhisperDesk.Addons.dll` (in this folder; the Microsoft Store copy leaves it out, so take it from the Add-on SDK zip on the GitHub release) with `Private=false`.
    See `SampleWordExport\SampleWordExport.csproj`.
 2. Implement `IWhisperDeskAddon`:
 

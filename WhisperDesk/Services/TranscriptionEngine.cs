@@ -133,7 +133,9 @@ public sealed class TranscriptionEngine : IDisposable
 
     private void LoadWhisperCpp(string modelPath, EngineOptions options)
     {
-        if (_factory != null && _modelPath == modelPath && _options == options) return;
+        // Same model, options and file: nothing to do. A model file replaced since (Tools → Models → Update) loads again.
+        var stamp = Stamp(modelPath);
+        if (_factory != null && _modelPath == modelPath && _options == options && _modelStamp == stamp) return;
 
         _factory?.Dispose();
         _factory = null;
@@ -144,8 +146,12 @@ public sealed class TranscriptionEngine : IDisposable
             UseFlashAttention = options.FlashAttention,
         });
         _modelPath = modelPath;
+        _modelStamp = stamp;
         _options = options;
     }
+
+    private string? _modelStamp;
+    private static string Stamp(string path) { try { var i = new System.IO.FileInfo(path); return $"{i.Length}|{i.LastWriteTimeUtc.Ticks}"; } catch { return ""; } }
 
     private void FallBack(string during, Exception ex, string? dir)
     {

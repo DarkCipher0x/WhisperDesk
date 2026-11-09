@@ -13,7 +13,7 @@ claims here, in the UI, the guide or marketing.
 
 ### 1.1 What the application is
 
-A .NET 8 WPF desktop app (single-file, self-contained, x64). Data lives in ordinary files:
+A .NET 10 WPF desktop app (single-file, self-contained, x64). Data lives in ordinary files:
 
 | Data | Location | Format |
 |---|---|---|
@@ -42,7 +42,8 @@ A .NET 8 WPF desktop app (single-file, self-contained, x64). Data lives in ordin
 | Installer | winget | **FFmpeg install ticked by default** | winget | Opt-out network use at install |
 | ONNX Runtime | ETW telemetry provider | Process start | n/a | Official ORT builds emit telemetry events to Windows diagnostics unless disabled |
 
-No telemetry, analytics, crash upload, update check or remote logging exists in WhisperDesk's own code.
+No telemetry, analytics, crash upload or remote logging exists in WhisperDesk's own code. Since 1.9 there is an update
+check (§3.8): it runs only when you click Check, or on a schedule you switch on; it is off by default.
 
 ### 1.3 Weaknesses found
 
@@ -117,7 +118,8 @@ Vault (encryption, lock, 2FA)             Third-party add-ons (sandboxed, per-ca
                         policy check → user consent → activity log (feature, host, bytes, time)
 ```
 
-Nothing in the core path needs the network once models are present. No network request happens at start-up.
+Nothing in the core path needs the network once models are present. No network request happens at start-up (an
+automatic update check, if you switch it on, runs 20 seconds after start and at most daily or weekly).
 
 ### 3.2 Encryption ("vault")
 
@@ -200,7 +202,48 @@ marked secret are stored there, never in `settings.json`; logs, error messages a
 `Remote AI`, `Webhook add-on`, add-on name) and logged (time, feature, host, bytes; no URL query, no body). Settings →
 Security & privacy shows per-feature switches and the activity list. Model downloads default to **Ask**: the dialog
 says what is downloaded, from where, its size, and that only a file request (IP address, TLS) is visible to the host.
-There are no automatic update or model checks; updates are downloaded manually from the website.
+There are no automatic model checks. Update checks are attributed to `Update check` and limited to github.com (or the
+one https address you set); see §3.8.
+
+### 3.8 Signed updates
+
+`Services/Updater.cs`, Settings → Updates and Help → Check for updates. The same scheme as DarkCipher ServerManagement:
+
+* Each GitHub Release carries `update.json` (version, notes, the MSI's file name, size and SHA-256) with
+  `update.json.sig` (ECDSA P-256 / SHA-256, IEEE P1363) and `update.json.pq.sig` (ML-DSA-65, FIPS 204, BouncyCastle).
+  Both public keys are pinned in the app; an update is offered only when **both** signatures verify over the exact
+  bytes. GitHub (or a mirror) only carries files: a hijacked account or server can't make WhisperDesk install anything.
+* Strict parsing: product must be WhisperDesk, version `x.y.z` and newer than the installed one (a replayed old signed
+  release is never offered), file name `WhisperDesk-<version>-x64.msi`, same host as the update information, no query.
+* Redirects are followed by hand and only to GitHub's own hosts; a custom address follows none.
+* The download goes to a private temp folder and must match the signed size and SHA-256, be an MSI, and carry
+  WhisperDesk's UpgradeCode and the signed ProductVersion (read through Windows Installer). It is checked again right
+  before `msiexec /i` runs, and the next start confirms the new version is running.
+* Off by default: nothing is checked until you click Check or switch on the weekly/daily check; downloading in the
+  background is a separate switch. The Microsoft Store copy never checks (the Store updates it); the portable copy is
+  pointed to the release page.
+* The private keys are DPAPI-protected files on the release PC (`tools/sign-update.ps1`), never in the repository or a
+  build. `release.ps1` refuses to publish a release whose `update.json` doesn't verify and describe its MSI exactly.
+  `sign-update.ps1` refuses to create or restore keys from a shell running in a packaged app's context, where MSIX file
+  virtualisation would silently put them in that app's private storage.
+
+### 3.9 The signed model list
+
+`Services/ModelCatalog.cs`, `models/catalog.json`, Tools → Models → Manage and update models.
+
+* Which models exist, where each downloads from, and its size and SHA-256 come from one list. The list built into the
+  app is the fallback; each release also publishes it as `models.json` with `.sig` and `.pq.sig`, signed with the same
+  two release keys as `update.json`. Check for new models fetches it from the latest release (or next to a custom update
+  address), follows redirects only to GitHub's hosts, caps the size at 256 KB and needs **both** signatures.
+* An integer `sequence` blocks downgrades: an older list is never used, and a list with the same number but different
+  bytes is refused. The saved copy is re-verified at every start; an altered copy falls back to the built-in list.
+* Strict parsing: no duplicate JSON properties, ids or file names; exactly one segmentation, embedding and VAD model;
+  file names without paths; downloads https only, from a Hugging Face URL pinned to a 40-hex commit or a GitHub release
+  asset, with no query, port or user info. Anything else rejects the whole list.
+* Model files are data. Each download is size-capped, must match the list's exact size and SHA-256, and replaces the old
+  file only once verified. `verified.json` records the hash with the file's size and time; a changed file is hashed again
+  before use, and one that matches no trusted hash is shown as damaged and never loaded.
+* The Microsoft Store copy fetches the list too: it changes data only, never the app's code.
 
 ### 3.7 Logging
 
@@ -240,6 +283,7 @@ SHA-256.
 | Protected file I/O, working folder, migration | `SecureFile.cs`, `WorkDir.cs`, `Services/Security/VaultMigration.cs` |
 | Lock screen, auto-lock, dialogs | `LockWindow.cs`, `Services/Security/AppLock.cs`, `SecurityDialogs.cs`, Settings → Security & privacy |
 | Network gate and activity log | `Services/Security/NetworkGate.cs` |
+| Signed updates | `Services/Updater.cs`, `Services/Pqc.cs`, `SettingsWindow.Updates.cs`, `tools/sign-update.ps1` |
 | Credentials | `Services/Security/SecretStore.cs` (Credential Manager) |
 | Add-on capabilities, sandbox | `Services/Addons/AddonCapabilities.cs`, `AddonManager.cs`, `Services/Addons/Sandbox/*` |
 | Log redaction, embedded browser lockdown, clipboard | `LogRedactor.cs`, `SafeWebView.cs`, `Services/SafeClipboard.cs` |

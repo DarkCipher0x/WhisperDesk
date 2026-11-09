@@ -523,7 +523,7 @@
                     <Button Content="Network activity…" Click="OnNetworkActivity"/>
                     <Button Content="Add-on permissions…" Click="OnAddonPermissions"/>
                 </WrapPanel>
-                <TextBlock Style="{StaticResource Hint}" Text="There are no automatic update or model checks. New versions are downloaded by you from the website; release files come with SHA-256 checksums."/>
+                <TextBlock Style="{StaticResource Hint}" Text="Nothing is checked automatically unless you switch it on: updates only when you click Check for updates (or the schedule you choose in Updates), models only when you download one. Updates are installed only when they carry both WhisperDesk release-key signatures."/>
 
                 <!-- Outside the vault -->
                 <TextBlock Style="{StaticResource Section}" Text="Where your data can still be read"/>
@@ -537,6 +537,64 @@
                     <Button Content="Open the data folder" Click="OnOpenSettingsFolder"/>
                 </StackPanel>
                 <TextBlock Style="{StaticResource Hint}" Text="Voiceprints are biometric data: get consent before saving someone's voice, and remove voices you no longer need in Tools → Voice library. Backups can be encrypted with a password (File → Backup)."/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Updates">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="22,0,22,18">
+                <TextBlock Style="{StaticResource Section}" Text="Updates"/>
+                <TextBlock x:Name="UpdInstalled" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <TextBlock x:Name="UpdDisabled" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+                <StackPanel x:Name="UpdPanel">
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Field}" Text="Updates from"/>
+                        <StackPanel Grid.Column="1">
+                            <ComboBox x:Name="UpdSourceBox" Width="320" HorizontalAlignment="Left" SelectionChanged="OnUpdSource">
+                                <ComboBoxItem Content="GitHub releases (DarkCipher0x/WhisperDesk)" Tag="github"/>
+                                <ComboBoxItem Content="An https address of my own" Tag="url"/>
+                            </ComboBox>
+                            <DockPanel x:Name="UpdEndpointRow" Margin="0,6,0,0" Visibility="Collapsed">
+                                <Button DockPanel.Dock="Right" Content="Save address" MinWidth="0" Margin="6,0,0,0" Click="OnUpdSaveEndpoint"/>
+                                <TextBox x:Name="UpdEndpointBox" Padding="5,4" FontFamily="Consolas"/>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource Hint}" Text="“Check for updates” reads the update information and its two signatures from here, and the installer from the same place (GitHub: github.com and its download host only). A plain download: nothing about you, this PC or your recordings is sent. Listed in Network activity."/>
+                        </StackPanel>
+                    </Grid>
+                    <WrapPanel Margin="0,0,0,4">
+                        <Button x:Name="UpdCheckButton" Content="Check for updates" Style="{StaticResource PrimaryButton}" Click="OnUpdCheck"/>
+                    </WrapPanel>
+                    <TextBlock x:Name="UpdResult" TextWrapping="Wrap" Margin="0,4,0,4"/>
+                    <Border x:Name="UpdDetails" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="10,8" Margin="0,4,0,8" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Field}" Text="What's new"/>
+                            <TextBox x:Name="UpdNotes" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="170" VerticalScrollBarVisibility="Auto" Padding="6"/>
+                            <TextBlock x:Name="UpdPackage" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11.5" Margin="0,8,0,0"/>
+                            <WrapPanel Margin="0,8,0,0">
+                                <Button x:Name="UpdDownloadButton" Content="Download and verify" Style="{StaticResource PrimaryButton}" Click="OnUpdDownload"/>
+                                <Button x:Name="UpdInstallButton" Content="Install…" IsEnabled="False" Click="OnUpdInstall"/>
+                                <Button x:Name="UpdPageButton" Content="Open the release page" Click="OnUpdReleasePage"/>
+                            </WrapPanel>
+                            <ProgressBar x:Name="UpdProgress" Height="6" Maximum="1" Margin="0,6,0,0" Visibility="Collapsed"/>
+                            <TextBlock x:Name="UpdVerify" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Style="{StaticResource Section}" Text="Automatic check"/>
+                    <CheckBox x:Name="UpdAutoBox" Content="Check automatically (tells you in the status bar; never installs on its own)" Click="OnUpdAuto"/>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Field}" Text="How often"/>
+                        <ComboBox x:Name="UpdIntervalBox" Grid.Column="1" Width="200" HorizontalAlignment="Left" SelectionChanged="OnUpdInterval">
+                            <ComboBoxItem Content="Once a week" Tag="weekly"/>
+                            <ComboBoxItem Content="Once a day" Tag="daily"/>
+                        </ComboBox>
+                    </Grid>
+                    <CheckBox x:Name="UpdAutoDownloadBox" Content="Also download and verify a new version in the background (installing always asks you first)" Margin="0,6,0,0" Click="OnUpdAutoDownload"/>
+                    <TextBlock Style="{StaticResource Hint}" Text="Off by default. When on, WhisperDesk checks at most once per interval, a little after it starts. These choices are saved straight away."/>
+                    <TextBlock x:Name="UpdTrust" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+                </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

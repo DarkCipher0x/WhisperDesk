@@ -49,7 +49,9 @@ public static class OnnxRuntimeGuard
         }
         catch (Exception ex)
         {
-            Problem = $"WhisperDesk's onnxruntime.dll couldn't be loaded. Speaker recognition, voice detection and the NPU are switched off. {PackageInfo.RepairHint}.";
+            // Name the usual cause: it needs the Visual C++ runtime, which WhisperDesk ships next to the exe (VcRuntime).
+            var why = VcRuntime.Missing.Count > 0 ? $" ({string.Join(", ", VcRuntime.Missing)} missing)" : $" ({ex.Message.TrimEnd('.', ' ', '\r', '\n')})";
+            Problem = $"WhisperDesk's onnxruntime.dll couldn't be loaded{why}. Speaker recognition, voice detection and the NPU are switched off. {PackageInfo.RepairHint}.";
             App.Log("ONNX Runtime", ex);
         }
     }

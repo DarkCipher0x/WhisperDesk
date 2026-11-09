@@ -39,7 +39,7 @@ restricted deploy user exists). Step 7 hands over a verified drop and waits; ste
 ### 0. Preflight
 - **Kill switch** (see below) read and printed; it is read again at the start of every public step.
 - Version agrees everywhere: `WhisperDesk.csproj <Version>`, a `## <ver>` CHANGELOG section, and no hard-coded older
-  version left in the READMEs (the public README badge and version lines become `1.8.1` placeholders filled in
+  version left in the READMEs (the public README badge and version lines become `1.9.0` placeholders filled in
   by step 3).
 - Not yet released: no published GitHub Release `v<ver>`.
 - Remotes: the public clone's `origin` must be exactly `https://github.com/DarkCipher0x/WhisperDesk.git`; branch
@@ -67,7 +67,7 @@ pipeline: Partner Center only).
   `WhisperDesk/**/*.xaml`, `WhisperDesk/Installer/WhisperDesk.wxs`, `WhisperDesk/docs/img/*.png`, …). A file not
   matched is not published, and the run prints new unmatched files so a new source file is added deliberately.
   A short hard-deny list (keys, symbols, media, `*.local.txt`, `bin/obj/dist/publish`) still wins over the allowlist.
-- Repo-root files come from `public-repo\` (README, `.github`, sln, `.gitignore`, `.gitattributes`); `1.8.1` is
+- Repo-root files come from `public-repo\` (README, `.github`, sln, `.gitignore`, `.gitattributes`); `1.9.0` is
   filled in.
 - The SDK contract DLL is rebuilt path-free; the guide PDF comes from `dist\<ver>\`.
 - Generated images (`Packaging\Images`, `Packaging\StoreListing`) stay out; `build.ps1` redraws the tiles.

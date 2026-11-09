@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.9.0
+
+**Fixed**
+- Live transcription in the Microsoft Store copy still failed on a fresh PC, this time with "WhisperDesk's onnxruntime.dll couldn't be loaded". The native libraries (ONNX Runtime, whisper.cpp) need the Microsoft Visual C++ runtime, and the Store package, the MSI and the zip didn't include it, so they only worked on PCs that already had it installed. WhisperDesk now ships its own Microsoft-signed copy of the Visual C++ runtime in all three packages and loads it at start-up. The build checks that every native library's runtime dependency is in the package.
+- When `onnxruntime.dll` can't be loaded, the message now says why (for example which runtime file is missing).
+- "Remove old files" can never touch imported custom models or the NPU versions (they live in their own folders).
+
+**Models: download, update and check for new ones**
+- Tools → Models → Manage and update models… lists every speech, speaker and voice-detection model with its size and state (not downloaded, up to date, update available, or damaged), and downloads, updates or removes each one with a progress bar. "Update all" fetches every update at once; the current file stays in use until the new one has downloaded and passed its SHA-256 check. "Remove old files…" deletes model files no model uses any more.
+- New models: Large-v3 Turbo q8 and q5 and Large-v3 q5 (quantised: about half the size and memory, nearly the same accuracy), and English-only Tiny, Base, Small and Medium (faster and slightly more accurate for English).
+- Check for new models fetches WhisperDesk's model list (`models.json`) from the latest GitHub release. It is signed with the same two release keys as updates (ECDSA P-256 and ML-DSA-65) and carries a version number: an unsigned, altered or older list is never used, and the list built into the app is the fallback. So new or updated models reach every copy, the Microsoft Store one included, without an app update. Model files are data, never programs, and every one comes from a pinned Hugging Face revision or a GitHub release and must match its size and SHA-256.
+- A model file changed on disk is re-checked before use; one that matches no trusted SHA-256 is shown as damaged and never loaded. Existing downloads from earlier versions are recognised without downloading again.
+
+**Self-test**
+- `WhisperDesk.exe --selftest [report.txt]` runs a headless end-to-end check in a throw-away folder (your library and settings are never touched): the bundled Visual C++ runtime loads from the app folder, ONNX Runtime loads, the Tiny and speaker models download and verify, a sentence spoken by Windows' text-to-speech is transcribed both as a file and through a real live session (speaker identification and voice detection included), and microphone access is reported. `--cpu` forces the processor. The release checks run it inside the installed Microsoft Store package on a clean Windows Sandbox, with the Windows App Certification Kit (`Packaging/store-check`).
+
+**Signed in-app updates**
+- Settings → Updates and Help → Check for updates… check WhisperDesk's GitHub releases for a newer version, show its notes, download and verify the installer, and install it (WhisperDesk closes and Windows Installer upgrades it; your library, voices, models and settings stay where they are). The next start confirms the new version is running.
+- An update is offered only when its update information carries both WhisperDesk release-key signatures pinned in the app: ECDSA P-256 and post-quantum ML-DSA-65. The installer must match the signed size and SHA-256 and be WhisperDesk's own MSI at that version. Older versions are never offered, and redirects are only followed to GitHub's own hosts.
+- Off by default: nothing is checked until you click Check, or switch on the weekly or daily check (downloading in the background is a separate switch, and installing always asks). You can point WhisperDesk at an https address of your own that mirrors the same signed files.
+- The Microsoft Store copy is updated by the Store and never checks. The portable copy shows the release page, where the new zip is.
+
+**.NET 10**
+- WhisperDesk, the add-on contract, the SDK sample and the tests now target .NET 10 (long-term support; .NET 8 support ends on 10 November 2026). The runtime is still built in, so there's nothing to install. Add-ons built against the 1.7/1.8 contract keep working.
+
 ## 1.8.1
 
 **Fixed**

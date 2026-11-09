@@ -29,4 +29,9 @@ description = "Deploy or webhook secret assignment"
 regex = '''(?i)\b(?:deploy[_-]?key|webhook[_-]?(?:url|secret)|api[_-]?key|access[_-]?token)\s*[:=]\s*["'][^"'\s]{16,}["']'''
 keywords = ["deploy", "webhook", "api", "token"]
 
-# No allowlist: test fixtures that look like secrets are assembled at run time (see HardeningTests), so every match fails the release.
+# Test fixtures that look like secrets are assembled at run time (see HardeningTests), so every match fails the release.
+# The one exception: the PUBLIC halves of the update-signing key pinned in Services/Updater.cs (ReleaseKeyX/Y, hex), which
+# gitleaks reads as API keys. Allowed by exact value only (never by path): any other value in that file still fails.
+[allowlist]
+description = "Pinned public update-signing key (Updater.cs)"
+regexes = ['''060486D551C809427CB2789E9C9375AF24A0E14F6D5BD3F721F9B0B369269936''', '''BF4CED954CBBEB577B4E0BB59C7A1AF59603912CC8D6E23F29E1B6EEFD787CC2''']

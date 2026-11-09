@@ -16,6 +16,8 @@ public static class NetFeature
     public const string LocalAi = "Local AI (Ollama on this PC)";
     public const string RemoteAi = "AI server on another computer";
     public const string Webhook = "Webhook add-on";
+    public const string Updates = "Update check";
+    public const string ModelCatalog = "Model list";
 }
 
 /// <summary>One outbound request, as shown in Settings → Security &amp; privacy → Network activity. No URL query, no body.</summary>
@@ -48,12 +50,14 @@ public static class NetworkGate
     public static IReadOnlyList<NetworkEvent> Activity { get { lock (Lock) return Log.ToList(); } }
 
     /// <summary>An HttpClient whose requests are policy-checked and logged as <paramref name="feature"/>.</summary>
-    public static HttpClient Create(string feature, TimeSpan timeout)
+    /// <param name="followRedirects">False: a redirect comes back as the 3xx response, for callers that check each hop
+    /// themselves (the updater).</param>
+    public static HttpClient Create(string feature, TimeSpan timeout, bool followRedirects = true)
     {
         var inner = new SocketsHttpHandler
         {
             AutomaticDecompression = DecompressionMethods.All,
-            AllowAutoRedirect = true, MaxAutomaticRedirections = 5,
+            AllowAutoRedirect = followRedirects, MaxAutomaticRedirections = 5,
             UseCookies = false,                                   // no cookies kept between requests
         };
         var client = new HttpClient(new GateHandler(feature) { InnerHandler = inner }) { Timeout = timeout };
@@ -102,6 +106,18 @@ public static class NetworkGate
                 return IsLoopback(uri.Host) ? null : "The local AI feature may only contact this PC.";
             case NetFeature.RemoteAi:
                 return s.AllowRemoteAi ? null : "Sending transcripts to an AI server on another computer is turned off (Settings → Summary & AI).";
+            case NetFeature.ModelCatalog:
+                // The signed model list (Services/ModelCatalog.cs): GitHub, or next to update.json on your own update server.
+                return s.ModelDownloadPolicy == "Block" ? "Model downloads are turned off (Settings → Security & privacy → Network)."
+                    : uri.Scheme != Uri.UriSchemeHttps ? "The model list is only fetched over https."
+                    : Updater.GitHubHost(uri) || (Updater.Enabled && Updater.IsCustomHost(uri)) ? null
+                    : $"The model list may only come from GitHub or your update server, not {uri.Host}.";
+            case NetFeature.Updates:
+                // GitHub (or the https address chosen in Settings → Updates) only; Updater checks every redirect too.
+                return !Updater.Enabled ? Updater.DisabledMessage
+                    : uri.Scheme != Uri.UriSchemeHttps ? "Updates are only fetched over https."
+                    : Updater.GitHubHost(uri) || Updater.IsCustomHost(uri) ? null
+                    : $"The update check may only contact GitHub or the address in Settings → Updates, not {uri.Host}.";
             default:
                 return null;   // add-ons: enabling the add-on is the consent; its host is shown in the activity log
         }

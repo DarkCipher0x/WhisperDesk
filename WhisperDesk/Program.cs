@@ -5,16 +5,22 @@ namespace WhisperDesk;
 /// <summary>
 /// Entry point. Normally starts the WPF app. With "--addon-host" it is the sandbox process for one third-party add-on:
 /// no window, no access to the library, running inside a Windows AppContainer (see Services/Addons/Sandbox).
+/// With "--selftest <report.txt>" it checks everything a live session needs, headless, in a throw-away folder (SelfTest).
 /// </summary>
 public static class Program
 {
     [STAThread]
     public static int Main(string[] args)
     {
+        // The self-test runs in a throw-away data folder, decided before anything reads a setting or a path.
+        var selfTestData = args.Length > 0 && args[0] == Services.SelfTest.Argument ? Services.SelfTest.PrepareIsolation() : null;
         KeepOutOfErrorReporting();
+        Services.VcRuntime.Init();          // our own VC++ runtime, before any native engine binds to another one
         Services.OnnxRuntimeGuard.Init();   // before anything can load a wrong onnxruntime.dll
         if (args.Length > 0 && args[0] == Services.Addons.Sandbox.SandboxProtocol.HostArgument)
             return Services.Addons.Sandbox.SandboxHost.Run();
+
+        if (selfTestData != null) return Services.SelfTest.Run(args, selfTestData);
 
         var app = new App();
         app.InitializeComponent();

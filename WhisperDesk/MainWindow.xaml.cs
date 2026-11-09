@@ -135,6 +135,43 @@ public partial class MainWindow : Window
         if (_queue.Count == 0) StatusText.Text = "Ready. Drop audio or video files here.";
         var sessions = args.Where(IsSession).ToList();
         if (sessions.Count > 0) Loaded += (_, _) => sessions.ForEach(OpenSession);
+        Loaded += (_, _) => Dispatcher.BeginInvoke(StartupUpdateChecks, DispatcherPriority.ApplicationIdle);
+    }
+
+    /// <summary>After an update: says whether the new version is really running. Then the opt-in automatic check (and
+    /// background download), at most once per interval and a little after start-up; it never installs.</summary>
+    private async void StartupUpdateChecks()
+    {
+        try
+        {
+            if (Updater.Enabled && Updater.ConfirmPendingUpdate() is { } done)
+                MessageBox.Show(this, done.Message, "Update", MessageBoxButton.OK, done.Completed ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            if (!Updater.AutoCheckDue) return;
+            await Task.Delay(TimeSpan.FromSeconds(20));
+            using var check = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+            var (info, _) = await Updater.CheckAsync(check.Token);
+            Updater.Settings.LastCheck = DateTime.Now;
+            Updater.SaveSettings();
+            if (info == null) return;
+            if (Updater.Settings.AutoDownload && Updater.InstalledByMsi)
+            {
+                using var dl = new CancellationTokenSource(TimeSpan.FromMinutes(30));
+                var (path, v) = await Updater.DownloadAndVerifyAsync(info, null, dl.Token);
+                if (v.Ok && path != null)
+                {
+                    Updater.Ready = (info, path);
+                    StatusText.Text = $"WhisperDesk {info.Version} is downloaded and verified: Settings → Updates to install it (you have {AboutWindow.Version}).";
+                    return;
+                }
+            }
+            StatusText.Text = $"WhisperDesk {info.Version} is available (you have {AboutWindow.Version}): Help → Check for updates.";
+        }
+        catch (Exception ex) { App.Log("Automatic update check", ex); }
+    }
+
+    private void OnCheckForUpdates(object sender, RoutedEventArgs e)
+    {
+        new SettingsWindow { Owner = this }.ShowSection("Updates").ShowDialog();
     }
 
     private static bool IsSession(string path) => path.EndsWith(SessionPackage.Extension, StringComparison.OrdinalIgnoreCase);
@@ -377,6 +414,12 @@ public partial class MainWindow : Window
         ModelBox.ItemsSource = all;
         ModelBox.SelectedItem = all.FirstOrDefault(m => m.Key == selectKey) ?? all.First(m => m.Name == "Large-v3 Turbo");
         UpdateModelStatus();
+    }
+
+    private void OnManageModels(object sender, RoutedEventArgs e)
+    {
+        new ModelsWindow { Owner = this }.ShowDialog();
+        RefreshModels((ModelBox.SelectedItem as ModelInfo)?.Key);
     }
 
     private async void OnImportModel(object sender, RoutedEventArgs e)

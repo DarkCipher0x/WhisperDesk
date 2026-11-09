@@ -38,7 +38,7 @@ public class SandboxTests(ITestOutputHelper output) : IDisposable
     private static string ProbeDll()
     {
         var cfg = AppContext.BaseDirectory.Contains("\\Release\\") ? "Release" : "Debug";
-        return RepoFile("ProbeAddon", "bin", cfg, "net8.0", "ProbeAddon.dll");
+        return RepoFile("ProbeAddon", "bin", cfg, "net10.0", "ProbeAddon.dll");
     }
 
     private static string WhisperDeskExe()
@@ -48,7 +48,7 @@ public class SandboxTests(ITestOutputHelper output) : IDisposable
         if (Environment.GetEnvironmentVariable("WD_TEST_SANDBOX_EXE") is { Length: > 0 } installed) return installed;
         // WhisperDesk's own build output (self-contained: the runtime sits next to the exe), not the copy in the test folder.
         var cfg = AppContext.BaseDirectory.Contains("\\Release\\") ? "Release" : "Debug";
-        return Path.GetFullPath(RepoFile("..", "WhisperDesk", "bin", cfg, "net8.0-windows10.0.19041.0", "win-x64", "WhisperDesk.exe"));
+        return Path.GetFullPath(RepoFile("..", "WhisperDesk", "bin", cfg, "net10.0-windows10.0.19041.0", "win-x64", "WhisperDesk.exe"));
     }
 
     private List<string> Run(bool network, IEnumerable<string> caps, Dictionary<string, string> options, Action<AppContainerProcess>? afterStart = null, string? sha = null)

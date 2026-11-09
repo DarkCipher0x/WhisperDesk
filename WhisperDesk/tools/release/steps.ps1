@@ -7,6 +7,10 @@ $script:StepOrder = 'preflight', 'build', 'verify', 'sanitise', 'scan', 'mirror'
 $script:PublicSteps = 'mirror', 'release', 'website', 'discord'
 $script:LocalSteps = 'preflight', 'build', 'verify', 'sanitise', 'scan'
 
+# The signed update information for the in-app updater (build.ps1 writes it; Services\Updater.cs reads it). Uploaded to
+# the GitHub Release with the downloads, but not a website download and not in SHA256SUMS (its signatures cover it).
+$script:UpdateAssetNames = 'update.json', 'update.json.sig', 'update.json.pq.sig', 'models.json', 'models.json.sig', 'models.json.pq.sig'
+
 function Get-AssetNames([string]$v) {
     "WhisperDesk-$v-x64.msi", "WhisperDesk-$v-x64-portable.zip", "WhisperDesk-$v-User-Admin-Guide.pdf",
     "WhisperDesk-$v-Addon-SDK.zip", "WhisperDesk-$v-Addon-WordExport.zip", "WhisperDesk-$v-SHA256SUMS.txt"
@@ -61,6 +65,30 @@ function Get-ZipEntryHashes([string]$zip, [string[]]$skip = @()) {
         }
     } finally { $z.Dispose() }
     $h
+}
+
+# Files in $zip (under $prefix) vs $folder: names must be the same set, and each file the same bytes or the same bytes
+# apart from carriage returns (line endings). Returns the paths that differ; empty means they match.
+function Compare-ZipToFolder([string]$zip, [string]$folder, [string]$prefix) {
+    if (-not ('ReleaseEol' -as [type])) {
+        Add-Type -TypeDefinition 'public static class ReleaseEol { public static bool Same(byte[] a, byte[] b) { int i = 0, j = 0; while (true) { while (i < a.Length && a[i] == 13) i++; while (j < b.Length && b[j] == 13) j++; if (i == a.Length || j == b.Length) return i == a.Length && j == b.Length; if (a[i++] != b[j++]) return false; } } }'
+    }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $base = (Resolve-Path $folder).Path
+    $files = @{}; Get-ChildItem $base -Recurse -File -Force | ForEach-Object { $files[$_.FullName.Substring($base.Length + 1).Replace('\', '/')] = $_.FullName }
+    $diff = [System.Collections.Generic.List[string]]::new(); $seen = @{}
+    $z = [IO.Compression.ZipFile]::OpenRead($zip)
+    try {
+        foreach ($e in $z.Entries) {
+            if ($e.FullName.EndsWith('/')) { continue }
+            $p = $e.FullName.Replace([char]92, [char]47).Substring($prefix.Length); $seen[$p] = $true   # Windows PowerShell zips use backslashes
+            if (-not $files.ContainsKey($p)) { $diff.Add("$p (only in the zip)"); continue }
+            $ms = [IO.MemoryStream]::new(); $s = $e.Open(); try { $s.CopyTo($ms) } finally { $s.Dispose() }
+            if (-not [ReleaseEol]::Same($ms.ToArray(), [IO.File]::ReadAllBytes($files[$p]))) { $diff.Add($p) }
+        }
+    } finally { $z.Dispose() }
+    foreach ($p in $files.Keys) { if (-not $seen.ContainsKey($p)) { $diff.Add("$p (missing from the zip)") } }
+    $diff
 }
 
 # ======================================== 0. preflight ===========================================================
@@ -133,7 +161,7 @@ function Step-Build($c) {
     if ($c.DryRun -or (Test-Path $c.Out)) { $buildArgs.Overwrite = $true }
     & (Join-Path $Root 'build.ps1') @buildArgs
     $files = [ordered]@{}
-    foreach ($n in (Get-AssetNames $c.Version) + "store\WhisperDesk-$($c.Version)-x64.msix") { $f = Join-Path $c.Out $n; if (Test-Path $f) { $files[$n] = Get-Sha256 $f } }
+    foreach ($n in (Get-AssetNames $c.Version) + $UpdateAssetNames + "store\WhisperDesk-$($c.Version)-x64.msix") { $f = Join-Path $c.Out $n; if (Test-Path $f) { $files[$n] = Get-Sha256 $f } }
     @{ status = 'done'; data = @{ files = $files } }
 }
 
@@ -141,7 +169,7 @@ function Step-Build($c) {
 function Step-Verify($c) {
     $v = $c.Version; $o = $c.Out; $fail = New-Object Collections.Generic.List[string]
     $names = Get-AssetNames $v
-    foreach ($n in $names + "store\WhisperDesk-$v-x64.msix") { if (-not (Test-Path (Join-Path $o $n))) { $fail.Add("missing $n") } }
+    foreach ($n in $names + $UpdateAssetNames + "store\WhisperDesk-$v-x64.msix") { if (-not (Test-Path (Join-Path $o $n))) { $fail.Add("missing $n$(if ($n -like '*.json*') { " (sign it: tools\sign-update.ps1 -Path dist\<ver>\$($n -replace '\.(pq\.)?sig$', ''))" })") } }
     if ($fail.Count) { throw "verify failed:`n  " + ($fail -join "`n  ") }
 
     # Checksums: exactly the five downloads, each matching, and not the checksum file itself
@@ -157,7 +185,10 @@ function Step-Verify($c) {
     $msixSkip = 'AppxManifest.xml', 'AppxBlockMap.xml', '[[]Content_Types].xml', 'AppxSignature.p7x', 'resources.pri', 'Images/*', 'AppxMetadata/*'
     $m = Get-ZipEntryHashes (Join-Path $o "store\WhisperDesk-$v-x64.msix") $msixSkip
     $z = Get-ZipEntryHashes (Join-Path $o "WhisperDesk-$v-x64-portable.zip")
-    foreach ($k in $z.Keys) { if (-not $m.ContainsKey($k)) { $fail.Add("Store parity: $k is in the zip but not the MSIX") } elseif ($m[$k] -ne $z[$k]) { $fail.Add("Store parity: $k differs between the zip and the MSIX") } }
+    # Left out of the MSIX on purpose (build.ps1): the AnyCPU add-on reference DLL the App Certification Kit flags
+    $notInStore = 'sdk/WhisperDesk.Addons.dll', 'sdk/WhisperDesk.Addons.xml'
+    foreach ($k in $z.Keys) { if ($notInStore -contains $k) { if ($m.ContainsKey($k)) { $fail.Add("Store parity: $k should not be in the MSIX") }; continue }
+        if (-not $m.ContainsKey($k)) { $fail.Add("Store parity: $k is in the zip but not the MSIX") } elseif ($m[$k] -ne $z[$k]) { $fail.Add("Store parity: $k differs between the zip and the MSIX") } }
     foreach ($k in $m.Keys) { if (-not $z.ContainsKey($k)) { $fail.Add("Store parity: $k is in the MSIX but not the zip") } }
 
     # The version inside the program and the package
@@ -173,6 +204,18 @@ function Step-Verify($c) {
         try { $e = $mz.GetEntry('AppxManifest.xml'); $r = New-Object IO.StreamReader($e.Open()); $man = $r.ReadToEnd(); $r.Dispose() } finally { $mz.Dispose() }
         if ($man -notmatch "Version=""$([regex]::Escape($v)).0""") { $fail.Add("the MSIX manifest isn't version $v.0") }
     } finally { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+    if ($fail.Count) { throw "verify failed:`n  " + ($fail -join "`n  ") }
+
+    # The update information: both signatures verify against the pinned keys, and it describes exactly this MSI
+    & (Join-Path $Root 'tools\sign-update.ps1') -Verify (Join-Path $o 'update.json')
+    # The model list: both signatures verify, and it is byte-identical to models\catalog.json (the list built into this version)
+    & (Join-Path $Root 'tools\sign-update.ps1') -Verify (Join-Path $o 'models.json')
+    if ((Get-Sha256 (Join-Path $o 'models.json')) -ne (Get-Sha256 (Join-Path $Root 'models\catalog.json'))) { $fail.Add("models.json isn't byte-identical to models\catalog.json (rebuild)") }
+    $uj = [IO.File]::ReadAllText((Join-Path $o 'update.json')) | ConvertFrom-Json
+    $um = @($uj.packages | Where-Object { $_.kind -eq 'msi' -and $_.arch -eq 'x64' })
+    $msiPath = Join-Path $o "WhisperDesk-$v-x64.msi"
+    if ($uj.product -ne 'WhisperDesk' -or $uj.version -ne $v -or $um.Count -ne 1 -or $um[0].file -ne "WhisperDesk-$v-x64.msi" -or $um[0].url -or
+        [long]$um[0].bytes -ne (Get-Item $msiPath).Length -or $um[0].sha256 -ne (Get-Sha256 $msiPath)) { $fail.Add("update.json doesn't describe WhisperDesk-$v-x64.msi exactly") }
     if ($fail.Count) { throw "verify failed:`n  " + ($fail -join "`n  ") }
 
     # Privacy audit inside the binaries (MSI admin-extract, zips, unbundled app)
@@ -343,7 +386,7 @@ function Step-Mirror($c) {
 # ======================================== 6. GitHub Release (public) =============================================
 function Step-Release($c) {
     $v = $c.Version; $tag = "v$v"; $o = $c.Out
-    $assets = Get-AssetNames $v | ForEach-Object { Join-Path $o $_ }
+    $assets = (Get-AssetNames $v) + $UpdateAssetNames | ForEach-Object { Join-Path $o $_ }
     $local = @{}; foreach ($a in $assets) { $local[(Split-Path $a -Leaf)] = Get-Sha256 $a }
     $rel = Get-GhRelease $tag
     if ($c.DryRun) {
@@ -371,12 +414,20 @@ function Step-Release($c) {
         $old = $existing | Where-Object { $_.name -eq $leaf }
         if ($old -and $old.digest -eq "sha256:$($local[$leaf])") { Say "  $leaf already uploaded"; continue }
         if ($old) { Invoke-GitHub DELETE "$Api/releases/assets/$($old.id)" | Out-Null }
-        $type = switch -Regex ($leaf) { '\.msi$' { 'application/x-msi' } '\.zip$' { 'application/zip' } '\.pdf$' { 'application/pdf' } default { 'text/plain' } }
+        $type = switch -Regex ($leaf) { '\.msi$' { 'application/x-msi' } '\.zip$' { 'application/zip' } '\.pdf$' { 'application/pdf' } '\.json$' { 'application/json' } default { 'text/plain' } }
         Say ("  uploading {0} ({1:N1} MB)" -f $leaf, ((Get-Item $a).Length / 1MB))
         Invoke-RestMethod -Method POST -Uri "https://uploads.github.com/repos/$Owner/$RepoName/releases/$($rel.id)/assets?name=$([uri]::EscapeDataString($leaf))" -Headers (Get-GhHeaders) -ContentType $type -InFile $a -TimeoutSec 3600 | Out-Null
     }
     # GitHub's own SHA-256 of every upload must match before the release goes public
-    $up = @(Invoke-GitHub GET "$Api/releases/$($rel.id)/assets?per_page=100")
+    # GitHub fills in an asset's digest a little after the upload, so an empty digest is waited for (up to 3 min); a
+    # digest that's there but different fails at once.
+    for ($try = 0; ; $try++) {
+        $up = @(Invoke-GitHub GET "$Api/releases/$($rel.id)/assets?per_page=100")
+        $pending = @($up | Where-Object { $local.ContainsKey($_.name) -and -not $_.digest })
+        if (-not $pending -or $try -ge 18) { break }
+        if ($try -eq 0) { Say "  waiting for GitHub to compute the SHA-256 of $($pending.Count) upload(s)…" }
+        Start-Sleep -Seconds 10
+    }
     $bad = foreach ($n in $local.Keys) { $u = $up | Where-Object { $_.name -eq $n }; if (-not $u -or $u.digest -ne "sha256:$($local[$n])") { $n } }
     if ($bad) { throw "GitHub's SHA-256 doesn't match for: $($bad -join ', '). The release stays a draft; run -Resume to upload again." }
     if (Get-PublishingBlock) { return @{ status = 'blocked'; note = 'kill switch turned on before publishing the draft' } }
@@ -433,11 +484,10 @@ function Step-Website($c) {
         Invoke-SecretScan $scanDir (Join-Path $c.RelDir 'gitleaks-drop.json')
         Invoke-PrivacyScan $scanDir
     } finally { Remove-Item $scanDir -Recurse -Force -ErrorAction SilentlyContinue }
-    $stageHashes = @{}; $sbase = (Resolve-Path (Get-StepData $c.State 'sanitise').stage).Path
-    Get-ChildItem $sbase -Recurse -File -Force | ForEach-Object { $stageHashes[$_.FullName.Substring($sbase.Length + 1).Replace('\', '/')] = Get-Sha256 $_.FullName }
-    $zipHashes = Get-ZipEntryHashes $srcZip
-    $diff = @(); foreach ($k in $zipHashes.Keys) { $p = $k -replace '^WhisperDesk-src/', ''; if ($stageHashes[$p] -ne $zipHashes[$k]) { $diff += $p } }
-    if ($diff -or $zipHashes.Count -ne $stageHashes.Count) { throw "the source zip doesn't match the scanned public tree: $($diff -join ', ')" }
+    # The source zip must be the scanned tree. git archive applies the public repo's .gitattributes (text=auto: LF), the
+    # stage has the working copy's CRLF, so a file may differ only in carriage returns; anything else is a mismatch.
+    $diff = Compare-ZipToFolder $srcZip (Get-StepData $c.State 'sanitise').stage $(if ($c.DryRun) { '' } else { 'WhisperDesk-src/' })   # the dry-run zip is the stage itself, no prefix
+    if ($diff) { throw "the source zip doesn't match the scanned public tree: $($diff -join ', ')" }
 
     Say "  website drop ready: $drop ($($files.Count) downloads + source, manifest $((Get-Sha256 "$drop\manifest.json").Substring(0,12)))" Green
     if ($c.DryRun) { return @{ status = 'dry-run'; data = @{ drop = $drop } } }

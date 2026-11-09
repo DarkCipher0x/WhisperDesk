@@ -79,6 +79,9 @@
                           ToolTip="Opens the live-caption page with OBS Browser Source links (needs the “Live captions for OBS” add-on switched on)"/>
                 <Separator/>
                 <MenuItem Header="_Models">
+                    <MenuItem Header="_Manage and update models…" Click="OnManageModels"
+                              ToolTip="Download, update, check and remove the speech, speaker and voice-detection models; check for new ones"/>
+                    <Separator/>
                     <MenuItem Header="_Import a custom model…" Click="OnImportModel"
                               ToolTip="Use any whisper.cpp (GGML) model: fine-tuned, distilled, quantised or language-specific"/>
                     <MenuItem Header="_Remove the selected custom model…" Click="OnRemoveModel"/>
@@ -92,6 +95,7 @@
                 <MenuItem Header="Open the guide in your _PDF app" Click="OnOpenGuideExternal"/>
                 <MenuItem Header="_Privacy &amp; security" Click="OnPrivacy"/>
                 <Separator/>
+                <MenuItem Header="Check for _updates…" Click="OnCheckForUpdates"/>
                 <MenuItem Header="_About WhisperDesk" Click="OnAbout"/>
             </MenuItem>
         </Menu>

@@ -51,6 +51,48 @@ New-Item -ItemType Directory -Force $out | Out-Null
 dotnet publish .\WhisperDesk.csproj -c Release -o publish -nologo -v q
 if ($LASTEXITCODE) { throw "dotnet publish failed" }
 
+# ---- the bundled Visual C++ runtime (WhisperDesk.csproj, BundleVcRuntime) ----
+# Every copy must be Microsoft-signed and at least 14.40 (ONNX Runtime needs it), and every Visual C++ DLL that a native
+# library in the folder imports must be one of them: 1.8.1 from the Store had none and couldn't load onnxruntime.dll.
+function Get-PeImports([string]$path) {
+    $b = [IO.File]::ReadAllBytes($path)
+    if ($b.Length -lt 64 -or $b[0] -ne 0x4D -or $b[1] -ne 0x5A) { return @() }
+    $pe = [BitConverter]::ToInt32($b, 0x3C)
+    $nsec = [BitConverter]::ToUInt16($b, $pe + 6); $optSize = [BitConverter]::ToUInt16($b, $pe + 20); $opt = $pe + 24
+    $dd = $opt + $(if ([BitConverter]::ToUInt16($b, $opt) -eq 0x20B) { 112 } else { 96 })
+    $secs = 0..($nsec - 1) | ForEach-Object { $s = $opt + $optSize + $_ * 40
+        [pscustomobject]@{ VSize = [BitConverter]::ToUInt32($b, $s + 8); VA = [BitConverter]::ToUInt32($b, $s + 12); RawSize = [BitConverter]::ToUInt32($b, $s + 16); Raw = [BitConverter]::ToUInt32($b, $s + 20) } }
+    $off = { param($rva) foreach ($s in $secs) { if ($rva -ge $s.VA -and $rva -lt $s.VA + [math]::Max($s.VSize, $s.RawSize)) { return [int]($rva - $s.VA + $s.Raw) } }; -1 }
+    $names = @()
+    foreach ($dir in @(@{ Index = 1; Size = 20; NameAt = 12 }, @{ Index = 13; Size = 32; NameAt = 4 })) {   # imports, delay-load imports
+        $rva = [BitConverter]::ToUInt32($b, $dd + $dir.Index * 8)
+        if (-not $rva) { continue }
+        $p = & $off $rva
+        while ($p -ge 0 -and $p + $dir.Size -le $b.Length) {
+            $nameRva = [BitConverter]::ToUInt32($b, $p + $dir.NameAt)
+            if (-not $nameRva) { break }
+            $n = & $off $nameRva; $e = [Array]::IndexOf($b, [byte]0, $n)
+            $names += [Text.Encoding]::ASCII.GetString($b, $n, $e - $n).ToLowerInvariant()
+            $p += $dir.Size
+        }
+    }
+    $names
+}
+$vcFiles = 'vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll', 'msvcp140_1.dll', 'vcomp140.dll'
+foreach ($f in $vcFiles) {
+    $p = "publish\$f"
+    if (-not (Test-Path $p)) { throw "$f isn't in the publish folder (BundleVcRuntime in WhisperDesk.csproj)" }
+    $sig = Get-AuthenticodeSignature $p
+    if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw "$f isn't validly signed by Microsoft ($($sig.Status))" }
+    $v = (Get-Item $p).VersionInfo
+    if ($v.FileMajorPart -ne 14 -or $v.FileMinorPart -lt 40) { throw "$f is $($v.FileVersion); update the Microsoft Visual C++ Redistributable (x64) on this PC to 14.40 or newer" }
+}
+$vcNeeded = Get-ChildItem publish -Recurse -Include *.dll, *.exe | ForEach-Object { Get-PeImports $_.FullName } |
+    Where-Object { $_ -match '^(msvcp|vcruntime|vcomp|concrt|vccorlib)\d' -and $_ -ne 'vcruntime140_cor3.dll' } | Sort-Object -Unique
+$vcMissing = $vcNeeded | Where-Object { $_ -notin $vcFiles }
+if ($vcMissing) { throw "Native libraries import Visual C++ DLLs that aren't bundled: $($vcMissing -join ', '). Add them to VcRuntimeFile in WhisperDesk.csproj and Services\VcRuntime.cs." }
+Write-Host ("Visual C++ runtime: {0} bundled, Microsoft-signed; covers every native import ({1})." -f (Get-Item publish\msvcp140.dll).VersionInfo.FileVersion, ($vcNeeded -join ', ')) -ForegroundColor Green
+
 # ---- signing (optional) ----
 function Sign([string]$file) {
     if (-not $env:WD_SIGN_THUMBPRINT) { return }
@@ -100,6 +142,9 @@ $msixRoot = "obj\msix\root"; $priDir = "obj\msix\pri"
 if (Test-Path obj\msix) { Remove-Item obj\msix -Recurse -Force }
 New-Item -ItemType Directory -Force $msixRoot, $priDir | Out-Null
 Copy-Item publish\* $msixRoot -Recurse
+# The add-on contract DLL in sdk\ is an AnyCPU reference copy for developers (it's in the Add-on SDK zip too); in an x64
+# package the App Certification Kit's "Platform appropriate files" test flags it, and the app itself never loads it.
+Remove-Item "$msixRoot\sdk\WhisperDesk.Addons.dll", "$msixRoot\sdk\WhisperDesk.Addons.xml" -ErrorAction SilentlyContinue
 $manifest = (Get-Content .\Packaging\AppxManifest.xml -Raw).
     Replace('$IDENTITY_NAME$', (& $esc $identity.IdentityName)).
     Replace('$PUBLISHER_DISPLAY_NAME$', (& $esc $identity.PublisherDisplayName)).
@@ -174,5 +219,34 @@ $sumsName = "WhisperDesk-$version-SHA256SUMS.txt"
 $files = Get-ChildItem $out -File | Where-Object { $_.Name -like "WhisperDesk-$version-*" -and $_.Name -ne $sumsName }
 $sums = $files | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name }
 Set-Content -Path "$out\$sumsName" -Value $sums -Encoding ascii
+
+# ---- signed update information for the in-app updater (Services\Updater.cs) ----
+# update.json describes the MSI (size + SHA-256); the app offers it only when update.json.sig (ECDSA P-256) and
+# update.json.pq.sig (ML-DSA-65) both verify against the keys pinned in Updater.cs. The package has no "url": the app
+# resolves the file name next to update.json, so the same signed files work from GitHub or from a mirror of your own.
+$notesText = ''
+$cl = [regex]::Match([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'CHANGELOG.md'), [Text.Encoding]::UTF8), "(?ms)^## $([regex]::Escape($version))\s*\r?\n(.*?)(?=^## |\z)")
+if ($cl.Success) { $notesText = ($cl.Groups[1].Value.Trim() -replace '\*\*', '' -replace '`', '' -replace "\r\n", "`n") }
+$msiItem = Get-Item $msi
+$manifest = [ordered]@{
+    product = 'WhisperDesk'; version = $version; released = (Get-Date -Format 'yyyy-MM-dd'); notes = $notesText
+    packages = @([ordered]@{ kind = 'msi'; arch = 'x64'; file = $msiItem.Name; bytes = $msiItem.Length; sha256 = (Get-FileHash $msi -Algorithm SHA256).Hash.ToLowerInvariant() })
+}
+$updateJson = "$out\update.json"
+Remove-Item "$updateJson", "$updateJson.sig", "$updateJson.pq.sig" -ErrorAction SilentlyContinue
+[IO.File]::WriteAllText($updateJson, ($manifest | ConvertTo-Json -Depth 4) + "`n", (New-Object Text.UTF8Encoding $false))
+# models.json: the model list (models\catalog.json, byte for byte, also built into the app) signed with the same keys.
+# Every copy, the Microsoft Store one included, fetches it from the latest release (Tools > Models > Check for new
+# models), so new or updated models reach it without an app update. The app only uses a newer, validly signed list.
+$modelsJson = "$out\models.json"
+Remove-Item "$modelsJson", "$modelsJson.sig", "$modelsJson.pq.sig" -ErrorAction SilentlyContinue
+Copy-Item (Join-Path $PSScriptRoot 'models\catalog.json') $modelsJson
+$keyDir = Join-Path $env:LOCALAPPDATA 'DarkCipher\keys'
+if ((Test-Path "$keyDir\DarkCipherWhisperDesk-UpdateSigning-ECDSAP256.dpapi") -and (Test-Path "$keyDir\DarkCipherWhisperDesk-UpdateSigning-MLDSA65.dpapi")) {
+    & (Join-Path $PSScriptRoot 'tools\sign-update.ps1') -Path $updateJson
+    & (Join-Path $PSScriptRoot 'tools\sign-update.ps1') -Path $modelsJson
+} else {
+    Write-Warning "update.json and models.json are NOT signed: this Windows account has no WhisperDesk release keys ($keyDir). Installed copies will ignore them until they are signed (tools\sign-update.ps1 -Path <file>); release.ps1 refuses to publish them unsigned."
+}
 Get-ChildItem $out -File | Where-Object { $_.Name -like "WhisperDesk-$version-*" } | Format-Table Name, @{ n = 'MB'; e = { [math]::Round($_.Length / 1MB, 1) } }
 Write-Host "WhisperDesk $version built in $out" -ForegroundColor Green
